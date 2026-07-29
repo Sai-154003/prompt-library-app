@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com;
+                 style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+                 script-src 'self' 'unsafe-inline';
+                 font-src 'self' https://fonts.gstatic.com;
+                 connect-src 'self';">
+  <title>PromptLib — Automated Test Suite</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    /* ── Design tokens ───────────────────────────────── */
+    :root {
+      --bg:           #0F1117;
+      --surface:      #1A1D27;
+      --surface-2:    #22263A;
+      --border:       #2C3050;
+      --text:         #E2E4F0;
+      --text-muted:   #6B7280;
+      --pass:         #43D9AD;
+      --pass-dim:     #0D3028;
+      --fail:         #E53935;
+      --fail-dim:     #2D0A09;
+      --skip:         #FB8C00;
+      --primary:      #5C6BC0;
+      --primary-glow: rgba(92,107,192,0.25);
+      --radius:       8px;
+      --mono:         'JetBrains Mono', monospace;
+    }
+
+    /* ── Reset ───────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Top bar ─────────────────────────────────────── */
+    .topbar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .topbar__logo {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+      white-space: nowrap;
+    }
+    .topbar__logo span { color: var(--primary); }
+    .topbar__stats {
+      display: flex;
+      gap: 14px;
+      flex: 1;
+    }
+    .stat {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 60px;
+    }
+    .stat__value {
+      font-size: 20px;
+      font-weight: 700;
+      font-family: var(--mono);
+      line-height: 1;
+    }
+    .stat__value.pass  { color: var(--pass); }
+    .stat__value.fail  { color: var(--fail); }
+    .stat__value.total { color: var(--text); }
+    .stat__value.time  { color: var(--text-muted); font-size: 16px; }
+    .stat__label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; margin-top: 2px; }
+
+    .progress-bar {
+      height: 3px;
+      background: var(--border);
+      overflow: hidden;
+    }
+    .progress-bar__fill {
+      height: 100%;
+      background: var(--primary);
+      width: 0%;
+      transition: width 0.2s ease;
+    }
+    .progress-bar__fill.done-pass { background: var(--pass); }
+    .progress-bar__fill.done-fail { background: var(--fail); }
+
+    /* ── Buttons ─────────────────────────────────────── */
+    .btn {
+      padding: 8px 18px;
+      border-radius: var(--radius);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: filter 0.15s ease, transform 0.1s ease;
+      white-space: nowrap;
+    }
+    .btn:hover  { filter: brightness(1.1); }
+    .btn:active { transform: scale(0.97); }
+    .btn--primary { background: var(--primary); color: #fff; }
+    .btn--ghost   { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
+    .btn--ghost:hover { color: var(--text); border-color: var(--primary); }
+    .btn--sm { padding: 5px 12px; font-size: 11px; }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; filter: none; }
+
+    /* ── Main layout ─────────────────────────────────── */
+    .layout {
+      display: flex;
+      flex: 1;
+      min-height: 0;
+    }
+
+    /* ── Sidebar ─────────────────────────────────────── */
+    .sidebar {
+      width: 220px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 16px 0;
+      overflow-y: auto;
+      flex-shrink: 0;
+    }
+    .sidebar__title {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      padding: 0 16px 10px;
+    }
+    .suite-nav-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      cursor: pointer;
+      font-size: 13px;
+      color: var(--text-muted);
+      border-left: 2px solid transparent;
+      transition: all 0.15s;
+      text-decoration: none;
+    }
+    .suite-nav-item:hover    { background: var(--surface-2); color: var(--text); }
+    .suite-nav-item.active   { color: var(--text); border-left-color: var(--primary); background: var(--surface-2); }
+    .suite-nav-item__dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--text-muted); flex-shrink: 0;
+    }
+    .suite-nav-item__dot.pass { background: var(--pass); }
+    .suite-nav-item__dot.fail { background: var(--fail); }
+    .suite-nav-item__dot.running { background: var(--primary); animation: pulse 1s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    .suite-nav-item__count {
+      margin-left: auto;
+      font-size: 10px;
+      font-family: var(--mono);
+      color: var(--text-muted);
+    }
+
+    /* ── Content area ────────────────────────────────── */
+    .content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+    }
+
+    /* ── Suite card ──────────────────────────────────── */
+    .suite-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+    .suite-card__header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 18px;
+      cursor: pointer;
+      user-select: none;
+      border-bottom: 1px solid transparent;
+      transition: background 0.15s;
+    }
+    .suite-card__header:hover { background: var(--surface-2); }
+    .suite-card.is-open .suite-card__header { border-bottom-color: var(--border); }
+    .suite-card__chevron { color: var(--text-muted); font-size: 12px; transition: transform 0.2s; }
+    .suite-card.is-open .suite-card__chevron { transform: rotate(90deg); }
+    .suite-card__name  { font-size: 14px; font-weight: 600; flex: 1; }
+    .suite-card__badge {
+      font-size: 11px; font-family: var(--mono);
+      padding: 2px 8px; border-radius: 4px; font-weight: 600;
+    }
+    .suite-card__badge.pass { background: var(--pass-dim); color: var(--pass); }
+    .suite-card__badge.fail { background: var(--fail-dim); color: var(--fail); }
+    .suite-card__badge.pending { background: var(--surface-2); color: var(--text-muted); }
+
+    /* ── Test rows ───────────────────────────────────── */
+    .suite-body { display: none; }
+    .suite-card.is-open .suite-body { display: block; }
+
+    .test-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 10px 18px;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+    .test-row:last-child { border-bottom: none; }
+    .test-row__icon { flex-shrink: 0; width: 16px; text-align: center; }
+    .test-row__name { flex: 1; color: var(--text); }
+    .test-row__time {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+    .test-row__error {
+      background: var(--fail-dim);
+      border: 1px solid var(--fail);
+      border-radius: 4px;
+      padding: 8px 10px;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--fail);
+      margin-top: 6px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      width: 100%;
+    }
+    .test-row--fail .test-row__name { color: var(--fail); }
+    .test-row--pass .test-row__icon { color: var(--pass); }
+    .test-row--fail .test-row__icon { color: var(--fail); }
+    .test-row--running .test-row__icon { color: var(--primary); }
+    .test-row__detail { width: 100%; }
+
+    /* ── Empty state ─────────────────────────────────── */
+    .empty-state {
+      text-align: center;
+      padding: 80px 20px;
+      color: var(--text-muted);
+    }
+    .empty-state__icon { font-size: 48px; margin-bottom: 12px; }
+    .empty-state h2 { font-size: 18px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+
+    /* ── Summary bar ─────────────────────────────────── */
+    .summary-bar {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .summary-bar__text { flex: 1; font-size: 14px; }
+    .summary-bar__text .pass { color: var(--pass); font-weight: 600; }
+    .summary-bar__text .fail { color: var(--fail); font-weight: 600; }
+
+    /* ── Scrollbar ───────────────────────────────────── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+<!-- ── TOPBAR ── -->
+<div class="topbar">
+  <div class="topbar__logo">✨ <span>PromptLib</span> — Test Suite</div>
+  <div class="topbar__stats">
+    <div class="stat">
+      <div class="stat__value pass" id="statPass">—</div>
+      <div class="stat__label">Passed</div>
+    </div>
+    <div class="stat">
+      <div class="stat__value fail" id="statFail">—</div>
+      <div class="stat__label">Failed</div>
+    </div>
+    <div class="stat">
+      <div class="stat__value total" id="statTotal">—</div>
+      <div class="stat__label">Total</div>
+    </div>
+    <div class="stat">
+      <div class="stat__value time" id="statTime">—</div>
+      <div class="stat__label">Duration</div>
+    </div>
+  </div>
+  <button class="btn btn--primary" id="runBtn">▶ Run All Tests</button>
+  <button class="btn btn--ghost" id="clearBtn">Clear</button>
+</div>
+
+<div class="progress-bar">
+  <div class="progress-bar__fill" id="progressFill"></div>
+</div>
+
+<!-- ── LAYOUT ── -->
+<div class="layout">
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar__title">Test Suites</div>
+    <div id="suiteNav"></div>
+  </nav>
+
+  <main class="content" id="content">
+    <div class="empty-state" id="emptyState">
+      <div class="empty-state__icon">🧪</div>
+      <h2>Ready to run</h2>
+      <p>Click "Run All Tests" to execute the full suite</p>
+    </div>
+    <div id="resultsContainer" style="display:none;"></div>
+  </main>
+</div>
+
+<!-- ── APP DEPENDENCIES ── -->
+<script src="../js/core/constants.js"></script>
+<script src="../js/core/storage.js"></script>
+<script src="../js/core/crypto.js"></script>
+<script src="../js/core/validator.js"></script>
+<script src="../js/core/config.js"></script>
+<script src="../js/services/otp.service.js"></script>
+<script src="../js/services/email.service.js"></script>
+<script src="../js/services/auth.service.js"></script>
+<script src="../js/services/prompt.service.js"></script>
+
+<!-- ── TEST FRAMEWORK ── -->
+<script src="framework/assert.js"></script>
+<script src="framework/runner.js"></script>
+
+<!-- ── TEST SUITES ── -->
+<script src="suites/validator.test.js"></script>
+<script src="suites/crypto.test.js"></script>
+<script src="suites/auth.test.js"></script>
+<script src="suites/otp.test.js"></script>
+<script src="suites/prompt.test.js"></script>
+
+<script>
+  // ── UI helpers ──────────────────────────────────────────────────────────────
+  const $ = (id) => document.getElementById(id);
+
+  function esc(str) {
+    const d = document.createElement('div');
+    d.appendChild(document.createTextNode(str));
+    return d.innerHTML;
+  }
+
+  function buildSuiteNav(suites) {
+    const nav = $('suiteNav');
+    nav.innerHTML = '';
+    suites.forEach((s, i) => {
+      const a = document.createElement('a');
+      a.className      = 'suite-nav-item';
+      a.href           = `#suite-${i}`;
+      a.dataset.index  = i;
+      a.innerHTML = `
+        <span class="suite-nav-item__dot" id="dot-${i}"></span>
+        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(s.name)}</span>
+        <span class="suite-nav-item__count" id="nav-count-${i}">${s.tests.length}</span>`;
+      nav.appendChild(a);
+    });
+  }
+
+  function renderSuites(suites, results) {
+    const container = $('resultsContainer');
+    container.innerHTML = '';
+
+    suites.forEach((suite, si) => {
+      const res    = results ? results.suites[si] : null;
+      const tests  = res ? res.tests : suite.tests.map(t => ({ name: t.name, status: 'pending' }));
+      const passed = tests.filter(t => t.status === 'pass').length;
+      const failed = tests.filter(t => t.status === 'fail').length;
+
+      let badgeCls = 'pending', badgeText = `${suite.tests.length} tests`;
+      if (res) {
+        badgeCls  = failed > 0 ? 'fail' : 'pass';
+        badgeText = failed > 0 ? `${failed} failed` : `${passed} passed`;
+      }
+
+      const card = document.createElement('div');
+      card.className = 'suite-card is-open';
+      card.id        = `suite-${si}`;
+
+      const rows = tests.map(t => {
+        const icon = t.status === 'pass' ? '✅' : t.status === 'fail' ? '❌' : '⏳';
+        const rowCls = `test-row test-row--${t.status}`;
+        const errorHtml = t.error
+          ? `<div class="test-row__detail"><div class="test-row__error">${esc(t.error)}</div></div>`
+          : '';
+        const timeHtml = t.duration != null ? `<span class="test-row__time">${t.duration}ms</span>` : '';
+        return `
+          <div class="${rowCls}">
+            <span class="test-row__icon">${icon}</span>
+            <span class="test-row__name">${esc(t.name)}</span>
+            ${timeHtml}
+            ${errorHtml}
+          </div>`;
+      }).join('');
+
+      card.innerHTML = `
+        <div class="suite-card__header">
+          <span class="suite-card__chevron">▶</span>
+          <span class="suite-card__name">${esc(suite.name)}</span>
+          <span class="suite-card__badge ${badgeCls}">${badgeText}</span>
+        </div>
+        <div class="suite-body">${rows}</div>`;
+
+      card.querySelector('.suite-card__header').addEventListener('click', () => {
+        card.classList.toggle('is-open');
+      });
+
+      container.appendChild(card);
+    });
+
+    $('emptyState').style.display     = 'none';
+    $('resultsContainer').style.display = 'block';
+  }
+
+  function updateStats(results) {
+    $('statPass').textContent  = results.passed;
+    $('statFail').textContent  = results.failed;
+    $('statTotal').textContent = results.total;
+    $('statTime').textContent  = `${results.duration}ms`;
+
+    const fill = $('progressFill');
+    fill.style.width = '100%';
+    fill.className   = `progress-bar__fill done-${results.failed > 0 ? 'fail' : 'pass'}`;
+  }
+
+  function updateNavDot(idx, status) {
+    const dot = document.getElementById(`dot-${idx}`);
+    if (dot) dot.className = `suite-nav-item__dot ${status}`;
+  }
+
+  // ── Run logic ──────────────────────────────────────────────────────────────
+  async function runAll() {
+    const runBtn  = $('runBtn');
+    const fill    = $('progressFill');
+    runBtn.disabled = true;
+    runBtn.textContent = '⏳ Running…';
+
+    // Reset progress
+    fill.style.width    = '0%';
+    fill.className      = 'progress-bar__fill';
+    $('statPass').textContent  = '0';
+    $('statFail').textContent  = '0';
+    $('statTotal').textContent = '0';
+    $('statTime').textContent  = '—';
+
+    // Build nav from suite registry
+    const suites = TestRunner.getSuites();
+    buildSuiteNav(suites);
+    renderSuites(suites, null);
+
+    let completed = 0;
+    const total   = suites.reduce((s, x) => s + x.tests.length, 0);
+
+    const results = await TestRunner.run(({ suite, status }) => {
+      completed++;
+      fill.style.width = `${Math.round((completed / total) * 100)}%`;
+      // Update the nav dot for the suite that just ran a test
+      const idx = suites.findIndex(s => s.name === suite);
+      if (idx >= 0) updateNavDot(idx, 'running');
+    });
+
+    // Final render
+    renderSuites(suites, results);
+    updateStats(results);
+
+    // Update nav dots
+    results.suites.forEach((s, i) => {
+      updateNavDot(i, s.failed > 0 ? 'fail' : 'pass');
+    });
+
+    // Summary bar
+    const container  = $('resultsContainer');
+    const summaryBar = document.createElement('div');
+    summaryBar.className = 'summary-bar';
+    summaryBar.innerHTML = `
+      <div class="summary-bar__text">
+        Ran <strong>${results.total}</strong> tests in ${results.duration}ms —
+        <span class="pass">${results.passed} passed</span>,
+        <span class="fail">${results.failed} failed</span>
+      </div>
+      <button class="btn btn--sm btn--ghost" onclick="scrollTo(0,0)">↑ Top</button>`;
+    container.insertBefore(summaryBar, container.firstChild);
+
+    runBtn.disabled    = false;
+    runBtn.textContent = '▶ Run All Tests';
+  }
+
+  $('runBtn').addEventListener('click', runAll);
+  $('clearBtn').addEventListener('click', () => {
+    $('resultsContainer').style.display = 'none';
+    $('emptyState').style.display       = 'block';
+    $('suiteNav').innerHTML             = '';
+    $('statPass').textContent           = '—';
+    $('statFail').textContent           = '—';
+    $('statTotal').textContent          = '—';
+    $('statTime').textContent           = '—';
+    $('progressFill').style.width       = '0%';
+  });
+
+  // Auto-run on load
+  window.addEventListener('DOMContentLoaded', () => {
+    // Small delay so the page renders first
+    setTimeout(runAll, 200);
+  });
+</script>
+</body>
+</html>

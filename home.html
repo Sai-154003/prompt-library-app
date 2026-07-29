@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com; connect-src 'self';">
+  <title>Library — PromptLib</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<div class="app-layout">
+
+  <!-- ── HEADER ── -->
+  <header class="app-header" role="banner">
+    <a href="home.html" class="header-logo" aria-label="PromptLib home">
+      <div class="header-logo__mark">✨</div>
+      PromptLib
+    </a>
+
+    <div class="header-search">
+      <span class="header-search__icon" aria-hidden="true">🔍</span>
+      <input id="headerSearch" class="header-search__input" type="search"
+             placeholder="Search prompts…" autocomplete="off" aria-label="Search prompts">
+    </div>
+
+    <div class="header-actions">
+      <button id="addPromptBtn" class="btn btn--primary btn--sm">+ New Prompt</button>
+
+      <button id="exportBtn" class="btn btn--secondary btn--sm" title="Export prompts">⬇ Export</button>
+      <button id="importBtn" class="btn btn--secondary btn--sm" title="Import prompts">⬆ Import</button>
+      <input id="importFileInput" type="file" accept=".json" style="display:none" aria-hidden="true">
+
+      <button id="themeToggle" class="icon-btn" aria-label="Toggle dark mode" title="Toggle theme">🌙</button>
+
+      <div class="user-menu">
+        <button id="userMenuToggle" class="user-menu__trigger" aria-haspopup="true" aria-expanded="false">
+          <div id="userAvatar" class="avatar" style="width:30px;height:30px;font-size:12px;"></div>
+          <span id="userName" class="user-menu__name"></span>
+          <span aria-hidden="true">▾</span>
+        </button>
+        <div id="userMenuDropdown" class="user-menu__dropdown" role="menu">
+          <div style="padding:12px 16px 8px;border-bottom:1px solid var(--border-color);">
+            <div id="menuAvatar" class="avatar" style="margin:0 auto 8px;"></div>
+            <div style="font-size:var(--text-sm);font-weight:var(--fw-semibold);text-align:center;" id="menuName"></div>
+          </div>
+          <a href="profile.html" class="user-menu__item" role="menuitem">👤 Profile &amp; Settings</a>
+          <div class="user-menu__divider"></div>
+          <button id="logoutBtn" class="user-menu__item user-menu__item--danger" role="menuitem">🚪 Sign Out</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="app-body">
+
+    <!-- ── SIDEBAR ── -->
+    <aside class="app-sidebar" id="appSidebar" aria-label="Library navigation">
+      <div class="sidebar-section">
+        <div class="sidebar-section__title">Library</div>
+        <nav class="sidebar-nav" aria-label="Categories">
+          <button class="sidebar-link is-active" data-sidebar-cat="all">
+            <span class="sidebar-link__icon">📚</span>
+            All Prompts
+            <span class="sidebar-link__count" data-cat-count="all">0</span>
+          </button>
+          <button class="sidebar-link" data-sidebar-cat="coding">
+            <span class="sidebar-link__icon">💻</span>
+            Coding
+            <span class="sidebar-link__count" data-cat-count="coding">0</span>
+          </button>
+          <button class="sidebar-link" data-sidebar-cat="writing">
+            <span class="sidebar-link__icon">✍️</span>
+            Writing
+            <span class="sidebar-link__count" data-cat-count="writing">0</span>
+          </button>
+          <button class="sidebar-link" data-sidebar-cat="marketing">
+            <span class="sidebar-link__icon">📣</span>
+            Marketing
+            <span class="sidebar-link__count" data-cat-count="marketing">0</span>
+          </button>
+          <button class="sidebar-link" data-sidebar-cat="creative">
+            <span class="sidebar-link__icon">🎨</span>
+            Creative
+            <span class="sidebar-link__count" data-cat-count="creative">0</span>
+          </button>
+          <button class="sidebar-link" data-sidebar-cat="education">
+            <span class="sidebar-link__icon">🎓</span>
+            Education
+            <span class="sidebar-link__count" data-cat-count="education">0</span>
+          </button>
+        </nav>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-section__title">Filters</div>
+        <nav class="sidebar-nav">
+          <button id="sidebarFavorites" class="sidebar-link">
+            <span class="sidebar-link__icon">⭐</span>
+            Favorites
+            <span class="sidebar-link__count" id="favCount">0</span>
+          </button>
+          <button id="sidebarRecent" class="sidebar-link">
+            <span class="sidebar-link__icon">🕐</span>
+            Recently Added
+            <span class="sidebar-link__count" id="recentCount">0</span>
+          </button>
+        </nav>
+      </div>
+    </aside>
+
+    <!-- ── CONTENT ── -->
+    <main class="app-content" id="appContent" role="main">
+      <!-- Sort bar -->
+      <div class="sort-bar" role="toolbar" aria-label="Sort options">
+        <span class="sort-bar__label">Sort:</span>
+        <div class="sort-pills">
+          <button class="sort-pill is-active" data-sort="newest">Newest</button>
+          <button class="sort-pill" data-sort="oldest">Oldest</button>
+          <button class="sort-pill" data-sort="az">A–Z</button>
+          <button class="sort-pill" data-sort="mostused">Most Used</button>
+          <button class="sort-pill" data-sort="favorites">Favorites First</button>
+        </div>
+      </div>
+
+      <!-- Prompt grid -->
+      <div id="promptGrid" class="prompt-grid" role="list"></div>
+    </main>
+  </div>
+</div>
+
+<!-- ── ADD / EDIT MODAL ── -->
+<div id="promptModalBackdrop" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="promptModalTitle">
+  <div id="promptModal" class="modal">
+    <div class="modal__header">
+      <h2 id="promptModalTitle" class="modal__title">New Prompt</h2>
+      <button id="promptModalClose" class="modal__close btn btn--icon" aria-label="Close modal">×</button>
+    </div>
+    <div class="modal__body">
+      <form id="promptForm" style="display:flex;flex-direction:column;gap:var(--space-5);" novalidate>
+        <div class="form-field">
+          <label class="form-label" for="promptTitle">Title</label>
+          <input id="promptTitle" class="form-input" type="text" maxlength="80"
+                 placeholder="Give your prompt a clear name…" required>
+          <span id="titleError" class="form-error" role="alert"></span>
+        </div>
+
+        <div class="form-field">
+          <label class="form-label" for="promptCategory">Category</label>
+          <select id="promptCategory" class="form-input form-select">
+            <option value="coding">💻 Coding</option>
+            <option value="writing">✍️ Writing</option>
+            <option value="marketing">📣 Marketing</option>
+            <option value="creative">🎨 Creative</option>
+            <option value="education">🎓 Education</option>
+          </select>
+        </div>
+
+        <div class="form-field">
+          <label class="form-label" for="promptText">Prompt text</label>
+          <textarea id="promptText" class="form-textarea" rows="6"
+                    placeholder="Enter your full prompt here…" required style="min-height:140px;"></textarea>
+          <span id="textError" class="form-error" role="alert"></span>
+        </div>
+
+        <div class="form-field">
+          <label class="form-label">Tags <span class="text-muted text-sm">(press Enter or comma to add)</span></label>
+          <div id="tagsInputWrapper" class="tags-input-wrapper" role="group" aria-label="Tags">
+            <input class="tags-input" id="tagsRealInput" placeholder="Add tags…" maxlength="30">
+          </div>
+          <input id="tagsInput" type="hidden">
+        </div>
+      </form>
+    </div>
+    <div class="modal__footer">
+      <button id="promptModalCancel" class="btn btn--secondary">Cancel</button>
+      <button id="promptModalSave" class="btn btn--primary">Save Prompt</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── VIEW MODAL ── -->
+<div id="viewModalBackdrop" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="viewTitle">
+  <div id="viewModal" class="modal" style="max-width:640px;">
+    <div class="modal__header">
+      <div style="display:flex;flex-direction:column;gap:var(--space-2);">
+        <h2 id="viewTitle" class="modal__title"></h2>
+        <div style="display:flex;align-items:center;gap:var(--space-3);">
+          <span id="viewCategory" class="badge"></span>
+          <div id="viewTags" style="display:flex;flex-wrap:wrap;gap:var(--space-1);"></div>
+        </div>
+      </div>
+      <button id="viewModalClose" class="modal__close btn btn--icon" aria-label="Close modal">×</button>
+    </div>
+    <div class="modal__body">
+      <div class="prompt-view__meta">
+        <span class="text-muted text-sm">Full prompt</span>
+        <span id="viewCopyCount" class="prompt-view__copy-info"></span>
+      </div>
+      <div id="viewText" class="prompt-view__text"></div>
+    </div>
+    <div class="modal__footer">
+      <button id="viewModalCloseBtn" class="btn btn--secondary" onclick="document.getElementById('viewModalBackdrop').classList.remove('is-open')">Close</button>
+      <button id="usePromptBtn" class="btn btn--primary">📋 Use Prompt</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── DELETE CONFIRM MODAL ── -->
+<div id="deleteModalBackdrop" class="modal-backdrop" role="dialog" aria-modal="true">
+  <div class="modal confirm-dialog">
+    <div class="modal__header" style="border:none;padding-bottom:0;">
+      <div></div>
+      <button id="deleteModalClose" class="modal__close btn btn--icon" aria-label="Close modal">×</button>
+    </div>
+    <div class="modal__body" style="text-align:center;padding-top:var(--space-4);">
+      <div class="confirm-icon">🗑️</div>
+      <div class="confirm-title">Delete prompt?</div>
+      <p class="confirm-message">This action cannot be undone.</p>
+    </div>
+    <div class="modal__footer">
+      <button id="deleteCancelBtn" class="btn btn--secondary">Cancel</button>
+      <button id="deleteConfirmBtn" class="btn btn--danger">Delete</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/core/constants.js"></script>
+<script src="js/core/storage.js"></script>
+<script src="js/core/crypto.js"></script>
+<script src="js/core/validator.js"></script>
+<script src="js/services/otp.service.js"></script>
+<script src="js/services/auth.service.js"></script>
+<script src="js/services/prompt.service.js"></script>
+<script src="js/ui/toast.js"></script>
+<script src="js/ui/loader.js"></script>
+<script src="js/ui/password-meter.js"></script>
+<script src="js/pages/home.js"></script>
+</body>
+</html>

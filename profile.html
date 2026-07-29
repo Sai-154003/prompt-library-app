@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com; connect-src 'self';">
+  <title>Profile — PromptLib</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<div class="app-layout">
+
+  <!-- ── MINI HEADER ── -->
+  <header class="app-header" role="banner">
+    <a href="home.html" class="header-logo" aria-label="Back to library">
+      <div class="header-logo__mark">✨</div>
+      PromptLib
+    </a>
+
+    <div style="display:flex;align-items:center;gap:var(--space-3);margin-left:auto;">
+      <a href="home.html" class="btn btn--secondary btn--sm">← Back to Library</a>
+
+      <button id="themeToggle" class="icon-btn" aria-label="Toggle dark mode" title="Toggle theme">🌙</button>
+
+      <div class="user-menu">
+        <button id="userMenuToggle" class="user-menu__trigger" aria-haspopup="true">
+          <div id="headerAvatar" class="avatar" style="width:30px;height:30px;font-size:12px;"></div>
+          <span id="headerUserName" class="user-menu__name"></span>
+          <span aria-hidden="true">▾</span>
+        </button>
+        <div id="userMenuDropdown" class="user-menu__dropdown" role="menu">
+          <button id="logoutBtn" class="user-menu__item user-menu__item--danger" role="menuitem">🚪 Sign Out</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="app-body" style="padding-top:var(--header-height);">
+    <main style="flex:1;max-width:780px;margin:0 auto;padding:var(--space-6);" role="main">
+
+      <!-- Avatar + name card -->
+      <div class="profile-header">
+        <div id="profileAvatar" class="profile-avatar" aria-hidden="true"></div>
+        <div class="profile-info">
+          <div id="profileName" class="profile-info__name"></div>
+          <div id="profileEmail" class="profile-info__email"></div>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="profile-stats">
+        <div class="stat-card">
+          <div id="statTotal" class="stat-card__value">0</div>
+          <div class="stat-card__label">Prompts</div>
+        </div>
+        <div class="stat-card">
+          <div id="statFavorites" class="stat-card__value">0</div>
+          <div class="stat-card__label">Favorites</div>
+        </div>
+        <div class="stat-card">
+          <div id="statCopies" class="stat-card__value">0</div>
+          <div class="stat-card__label">Total Copies</div>
+        </div>
+      </div>
+
+      <!-- Edit name -->
+      <div class="profile-section">
+        <div class="profile-section__title">Account Information</div>
+        <div class="profile-form">
+          <div class="form-field">
+            <label class="form-label" for="nameInput">Full name</label>
+            <input id="nameInput" class="form-input" type="text" autocomplete="name"
+                   placeholder="Your name" maxlength="80">
+          </div>
+          <div class="profile-form__actions">
+            <button id="saveNameBtn" class="btn btn--primary btn--sm">Save Name</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Change password -->
+      <div class="profile-section">
+        <div class="profile-section__title">Change Password</div>
+        <div class="profile-form">
+          <div class="form-field">
+            <label class="form-label" for="currentPassword">Current password</label>
+            <div class="input-wrapper">
+              <input id="currentPassword" class="form-input" type="password"
+                     autocomplete="current-password" placeholder="Enter current password">
+              <button type="button" id="toggleCurrentPassword" class="toggle-password" aria-label="Toggle">👁</button>
+            </div>
+          </div>
+
+          <div class="form-field">
+            <label class="form-label" for="newPassword">New password</label>
+            <div class="input-wrapper">
+              <input id="newPassword" class="form-input" type="password"
+                     autocomplete="new-password" placeholder="Min. 8 characters">
+              <button type="button" id="toggleNewPassword" class="toggle-password" aria-label="Toggle">👁</button>
+            </div>
+            <div id="passwordMeter" class="password-meter">
+              <div class="meter__track"><div class="meter__bar"></div></div>
+              <div class="meter__label"></div>
+            </div>
+          </div>
+
+          <div class="form-field">
+            <label class="form-label" for="confirmNewPassword">Confirm new password</label>
+            <input id="confirmNewPassword" class="form-input" type="password"
+                   autocomplete="new-password" placeholder="Repeat new password">
+          </div>
+
+          <div class="profile-form__actions">
+            <button id="changePasswordBtn" class="btn btn--primary btn--sm">Update Password</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Danger zone -->
+      <div class="profile-section danger-zone">
+        <div class="profile-section__title">⚠️ Danger Zone</div>
+        <div class="danger-actions">
+          <div class="danger-action-item">
+            <div class="danger-action-item__info">
+              <p>Delete all prompts</p>
+              <span>Permanently remove all your saved prompts. Cannot be undone.</span>
+            </div>
+            <button id="deleteAllPromptsBtn" class="btn btn--danger btn--sm">Delete All Prompts</button>
+          </div>
+          <div class="danger-action-item">
+            <div class="danger-action-item__info">
+              <p>Delete account</p>
+              <span>Permanently delete your account and all associated data.</span>
+            </div>
+            <button id="deleteAccountBtn" class="btn btn--danger btn--sm">Delete Account</button>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- ── CONFIRM MODAL ── -->
+<div id="confirmModalBackdrop" class="modal-backdrop" role="dialog" aria-modal="true">
+  <div class="modal confirm-dialog">
+    <div class="modal__header" style="border:none;padding-bottom:0;">
+      <div></div>
+      <button id="confirmCloseBtn" class="modal__close btn btn--icon" aria-label="Close">×</button>
+    </div>
+    <div class="modal__body">
+      <div id="confirmIcon" class="confirm-icon"></div>
+      <div id="confirmTitle" class="confirm-title"></div>
+      <p id="confirmMessage" class="confirm-message"></p>
+      <div id="confirmPasswordField" style="display:none;margin-top:var(--space-5);">
+        <div class="form-field">
+          <label class="form-label" for="confirmPassword">Your password</label>
+          <input id="confirmPassword" class="form-input" type="password"
+                 placeholder="Enter your password to confirm">
+        </div>
+      </div>
+    </div>
+    <div class="modal__footer">
+      <button id="confirmCancelBtn" class="btn btn--secondary">Cancel</button>
+      <button id="confirmOkBtn" class="btn btn--danger">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/core/constants.js"></script>
+<script src="js/core/storage.js"></script>
+<script src="js/core/crypto.js"></script>
+<script src="js/core/validator.js"></script>
+<script src="js/services/otp.service.js"></script>
+<script src="js/services/auth.service.js"></script>
+<script src="js/services/prompt.service.js"></script>
+<script src="js/ui/toast.js"></script>
+<script src="js/ui/loader.js"></script>
+<script src="js/ui/password-meter.js"></script>
+<script src="js/pages/profile.js"></script>
+</body>
+</html>

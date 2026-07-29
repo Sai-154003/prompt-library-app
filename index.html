@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com; connect-src 'self';">
+  <title>Sign In — PromptLib</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/auth.css">
+</head>
+<body>
+<div class="auth-page">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="auth-logo__mark">✨</div>
+      <span class="auth-logo__name">PromptLib</span>
+    </div>
+
+    <h1 class="auth-heading">Welcome back</h1>
+    <p class="auth-subheading">Sign in to your account to continue</p>
+
+    <div id="lockoutAlert" class="lockout-alert" role="alert">
+      🔒 Account temporarily locked. Try again in:
+      <span id="lockoutCountdown" class="lockout-countdown"></span>
+    </div>
+
+    <form id="loginForm" class="auth-form" novalidate>
+      <div class="form-field">
+        <label class="form-label" for="email">Email address</label>
+        <input id="email" class="form-input" type="email" autocomplete="email"
+               placeholder="you@example.com" required>
+        <span id="emailError" class="form-error" role="alert"></span>
+      </div>
+
+      <div class="form-field">
+        <label class="form-label" for="password">Password</label>
+        <div class="input-wrapper">
+          <input id="password" class="form-input" type="password" autocomplete="current-password"
+                 placeholder="Enter your password" required>
+          <button type="button" id="togglePassword" class="toggle-password" aria-label="Toggle password visibility">👁</button>
+        </div>
+        <span id="passwordError" class="form-error" role="alert"></span>
+      </div>
+
+      <div class="auth-form__row">
+        <label class="auth-checkbox">
+          <input type="checkbox" id="rememberMe">
+          Remember me for 7 days
+        </label>
+        <a href="forgot-password.html" class="text-sm">Forgot password?</a>
+      </div>
+
+      <button type="submit" id="submitBtn" class="btn btn--primary btn--full btn--lg">
+        Sign In
+      </button>
+    </form>
+
+    <p class="auth-form__footer mt-6">
+      Don't have an account? <a href="signup.html">Create one</a>
+    </p>
+  </div>
+</div>
+
+<script src="js/core/constants.js"></script>
+<script src="js/core/storage.js"></script>
+<script src="js/core/crypto.js"></script>
+<script src="js/core/validator.js"></script>
+<script src="js/services/otp.service.js"></script>
+<script src="js/services/auth.service.js"></script>
+<script src="js/services/prompt.service.js"></script>
+<script src="js/ui/toast.js"></script>
+<script src="js/ui/loader.js"></script>
+<script src="js/pages/login.js"></script>
+</body>
+</html>
