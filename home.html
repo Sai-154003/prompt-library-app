@@ -248,8 +248,9 @@
     <div class="modal__header">
       <div style="display:flex;flex-direction:column;gap:var(--space-2);">
         <h2 id="viewTitle" class="modal__title"></h2>
-        <div style="display:flex;align-items:center;gap:var(--space-3);">
+        <div style="display:flex;align-items:center;gap:var(--space-3);flex-wrap:wrap;">
           <span id="viewCategory" class="badge"></span>
+          <span id="viewLockBadge" class="lock-badge" style="display:none;">🔒 Locked — copy only</span>
           <div id="viewTags" style="display:flex;flex-wrap:wrap;gap:var(--space-1);"></div>
         </div>
       </div>
@@ -264,6 +265,7 @@
     </div>
     <div class="modal__footer">
       <button id="viewModalCloseBtn" class="btn btn--secondary" onclick="document.getElementById('viewModalBackdrop').classList.remove('is-open')">Close</button>
+      <button id="viewEditBtn" class="btn btn--secondary">✏️ Edit</button>
       <button id="usePromptBtn" class="btn btn--primary">📋 Use Prompt</button>
     </div>
   </div>

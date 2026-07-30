@@ -405,6 +405,34 @@
 .card-action-btn--fav { font-size: 18px; }
 .card-action-btn--fav.is-favorite { color: #FFB300; }
 .card-action-btn--fav:hover { color: #FFB300; background: #FFF8E1; }
+.card-action-btn--lock:hover { background: #EDE7F6; color: #5C35A8; }
+
+/* ── Lock badge ── */
+.lock-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: var(--fw-semibold);
+  background: #EDE7F6;
+  color: #5C35A8;
+  border: 1px solid #C5B0E8;
+  white-space: nowrap;
+}
+
+/* ── Locked card ── */
+.prompt-card.is-locked {
+  border-left: 3px solid #9575CD;
+  opacity: 0.92;
+}
+
+[data-theme="dark"] .lock-badge {
+  background: #2D1F4A;
+  color: #CE93D8;
+  border-color: #6A3FA0;
+}
 
 .copy-count {
   font-size: var(--text-xs);

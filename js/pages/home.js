@@ -157,7 +157,8 @@
   const buildCard = (prompt) => {
     const card = document.createElement('div');
     const isSelected = selState.ids.has(prompt.id);
-    card.className = `prompt-card${selState.active ? ' is-selectable' : ''}${isSelected ? ' is-selected' : ''}`;
+    const isLocked   = !!prompt.isLocked;
+    card.className = `prompt-card${selState.active ? ' is-selectable' : ''}${isSelected ? ' is-selected' : ''}${isLocked ? ' is-locked' : ''}`;
     card.dataset.id = prompt.id;
 
     const cat = CATEGORIES.find(c => c.id === prompt.category) || { icon: '📄', label: prompt.category };
@@ -166,12 +167,25 @@
     const checkboxHtml = selState.active
       ? `<div class="card-checkbox${isSelected ? ' is-checked' : ''}" aria-hidden="true">${isSelected ? '✓' : ''}</div>`
       : '';
+    const lockBadge = isLocked
+      ? `<span class="lock-badge" title="Locked — copy only">🔒 Locked</span>`
+      : '';
+    const mutableBtns = isLocked ? '' : `
+          <button class="card-action-btn" data-action="edit" aria-label="Edit prompt" title="Edit">✏️</button>
+          <button class="card-action-btn" data-action="duplicate" aria-label="Duplicate prompt" title="Duplicate">⎘</button>
+          <button class="card-action-btn card-action-btn--danger" data-action="delete" aria-label="Delete prompt" title="Delete">🗑</button>`;
+    const lockBtn = isLocked
+      ? `<button class="card-action-btn card-action-btn--lock" data-action="lock" aria-label="Unlock prompt" title="Unlock to enable editing">🔓</button>`
+      : `<button class="card-action-btn card-action-btn--lock" data-action="lock" aria-label="Lock prompt" title="Lock — protect from edits">🔒</button>`;
 
     card.innerHTML = `
       ${checkboxHtml}
       <div class="prompt-card__top">
         <span class="prompt-card__title" data-action="view">${Validator.sanitizeHtml(prompt.title)}</span>
-        <span class="badge badge--${prompt.category}">${cat.icon} ${cat.label}</span>
+        <div style="display:flex;align-items:center;gap:var(--space-2);">
+          ${lockBadge}
+          <span class="badge badge--${prompt.category}">${cat.icon} ${cat.label}</span>
+        </div>
       </div>
       <div class="prompt-card__excerpt">${Validator.sanitizeHtml(prompt.text)}</div>
       <div class="prompt-card__tags">${tags}</div>
@@ -180,9 +194,8 @@
         <div class="prompt-card__actions">
           <button class="card-action-btn card-action-btn--fav ${favClass}" data-action="fav" aria-label="Toggle favorite" title="Favorite">★</button>
           <button class="card-action-btn" data-action="copy" aria-label="Copy prompt" title="Copy">📋</button>
-          <button class="card-action-btn" data-action="edit" aria-label="Edit prompt" title="Edit">✏️</button>
-          <button class="card-action-btn" data-action="duplicate" aria-label="Duplicate prompt" title="Duplicate">⎘</button>
-          <button class="card-action-btn card-action-btn--danger" data-action="delete" aria-label="Delete prompt" title="Delete">🗑</button>
+          ${lockBtn}
+          ${mutableBtns}
         </div>
       </div>`;
 
@@ -229,6 +242,18 @@
       });
       loadPrompts();
       ToastManager.show('Prompt duplicated.', 'success');
+    }
+    if (action === 'lock') {
+      const p = state.prompts.find(x => x.id === id);
+      if (!p) return;
+      const updated = PromptService.toggleLock(id, session.userId);
+      loadPrompts();
+      ToastManager.show(
+        updated.isLocked
+          ? '🔒 Prompt locked — copy only mode.'
+          : '🔓 Prompt unlocked — editing enabled.',
+        'info'
+      );
     }
   };
 
@@ -445,7 +470,12 @@
     document.getElementById('viewTitle').textContent    = p.title;
     document.getElementById('viewCategory').className   = `badge badge--${p.category}`;
     document.getElementById('viewCategory').textContent = `${cat.icon} ${cat.label}`;
-    // Highlight {{variables}} — sanitize first so substitution can't inject HTML
+
+    const lockEl = document.getElementById('viewLockBadge');
+    if (lockEl) {
+      lockEl.style.display = p.isLocked ? 'inline-flex' : 'none';
+    }
+
     const safeText = Validator.sanitizeHtml(p.text)
       .replace(/\{\{([^}]+)\}\}/g, '<mark class="var-highlight">{{$1}}</mark>');
     document.getElementById('viewText').innerHTML = safeText;
@@ -453,6 +483,12 @@
 
     const tags = (p.tags || []).map(t => `<span class="tag">${Validator.sanitizeHtml(t)}</span>`).join('');
     document.getElementById('viewTags').innerHTML = tags;
+
+    const editBtn = document.getElementById('viewEditBtn');
+    if (editBtn) {
+      editBtn.style.display = p.isLocked ? 'none' : '';
+      editBtn.onclick = () => { closeViewModal(); openPromptModal(id); };
+    }
 
     document.getElementById('usePromptBtn').onclick = async () => {
       await navigator.clipboard.writeText(p.text).catch(() => {});

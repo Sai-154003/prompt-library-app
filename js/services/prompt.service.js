@@ -32,6 +32,7 @@ window.PromptService = (() => {
       id:         _uid(),
       userId,
       isFavorite: i < 2,
+      isLocked:   false,
       copyCount:  Math.floor(Math.random() * 20),
       createdAt:  now - (SAMPLE_PROMPTS.length - i) * 3600000,
       updatedAt:  now - (SAMPLE_PROMPTS.length - i) * 3600000,
@@ -52,6 +53,7 @@ window.PromptService = (() => {
       text:      data.text.trim(),
       tags:      (data.tags || []).map(t => t.trim()).filter(Boolean),
       isFavorite: false,
+      isLocked:   false,
       copyCount:  0,
       createdAt:  Date.now(),
       updatedAt:  Date.now(),
@@ -91,6 +93,15 @@ window.PromptService = (() => {
     const idx = all.findIndex(p => p.id === id && p.userId === userId);
     if (idx === -1) return null;
     all[idx].isFavorite = !all[idx].isFavorite;
+    _save(all);
+    return all[idx];
+  };
+
+  const toggleLock = (id, userId) => {
+    const all = _getAll();
+    const idx = all.findIndex(p => p.id === id && p.userId === userId);
+    if (idx === -1) return null;
+    all[idx].isLocked = !all[idx].isLocked;
     _save(all);
     return all[idx];
   };
@@ -147,7 +158,7 @@ window.PromptService = (() => {
 
   return Object.freeze({
     seedForUser, getAll, getById, create, update, remove,
-    toggleFavorite, incrementCopyCount, deleteAllForUser,
+    toggleFavorite, toggleLock, incrementCopyCount, deleteAllForUser,
     exportPrompts, importPrompts,
   });
 })();
