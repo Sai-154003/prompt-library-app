@@ -160,7 +160,7 @@
       'This will permanently delete all your prompts. This action cannot be undone.',
       'Delete All',
       'btn--danger',
-      () => {
+      async () => {
         await PromptService.deleteAllForUser(session.userId);
         await loadStats();
         ToastManager.show('All prompts deleted.', 'success');
