@@ -840,10 +840,18 @@
   font-size: var(--text-sm);
   font-weight: var(--fw-medium);
   z-index: 150;
-  transform: translateY(-100%);
-  transition: transform var(--transition-slow);
+  visibility: hidden;
+  opacity: 0;
+  transform: translateY(-8px);
+  transition: opacity var(--transition-slow), transform var(--transition-slow), visibility var(--transition-slow);
+  pointer-events: none;
 }
-.session-expiry-banner.is-visible { transform: translateY(0); }
+.session-expiry-banner.is-visible {
+  visibility: visible;
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
 .session-expiry-banner button {
   color: #fff; text-decoration: underline;
   background: none; border: none; cursor: pointer; font-size: inherit;
