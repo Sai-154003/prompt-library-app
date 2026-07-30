@@ -68,11 +68,14 @@
 
   // ── Stats ────────────────────────────────────────────────
 
-  const loadStats = () => {
-    const prompts = PromptService.getAll(session.userId);
-    document.getElementById('statTotal').textContent     = prompts.length;
-    document.getElementById('statFavorites').textContent = prompts.filter(p => p.isFavorite).length;
-    document.getElementById('statCopies').textContent    = prompts.reduce((s, p) => s + (p.copyCount || 0), 0);
+  const loadStats = async () => {
+    try {
+      const prompts = await PromptService.getAll(session.userId);
+      const mine = prompts.filter(p => p.userId === session.userId);
+      document.getElementById('statTotal').textContent     = mine.length;
+      document.getElementById('statFavorites').textContent = mine.filter(p => p.isFavorite).length;
+      document.getElementById('statCopies').textContent    = mine.reduce((s, p) => s + (p.copyCount || 0), 0);
+    } catch {}
   };
 
   loadStats();
@@ -158,8 +161,8 @@
       'Delete All',
       'btn--danger',
       () => {
-        PromptService.deleteAllForUser(session.userId);
-        loadStats();
+        await PromptService.deleteAllForUser(session.userId);
+        await loadStats();
         ToastManager.show('All prompts deleted.', 'success');
       }
     );
@@ -180,7 +183,7 @@
         const result = await AuthService.deleteAccount(session.email, password);
         LoaderManager.hide();
         if (result.success) {
-          PromptService.deleteAllForUser(session.userId);
+          await PromptService.deleteAllForUser(session.userId);
           window.location.href = 'index.html';
         } else {
           ToastManager.show(result.message, 'error');
