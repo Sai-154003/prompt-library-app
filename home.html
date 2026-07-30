@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com; connect-src 'self';">
+        content="default-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self';">
   <title>Library — PromptLib</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -16,11 +16,19 @@
 <body>
 <div class="app-layout">
 
+  <!-- ── SESSION EXPIRY BANNER ── -->
+  <div id="sessionBanner" class="session-expiry-banner" role="alert" aria-live="polite">
+    ⚠️ Your session expires in less than 5 minutes —
+    <button onclick="window.location.href='index.html'">sign in again</button> to stay logged in.
+  </div>
+
   <!-- ── HEADER ── -->
   <header class="app-header" role="banner">
+    <button id="sidebarToggle" class="icon-btn sidebar-toggle" aria-label="Toggle sidebar" title="Menu">☰</button>
+
     <a href="home.html" class="header-logo" aria-label="PromptLib home">
       <div class="header-logo__mark">✨</div>
-      PromptLib
+      <span class="header-logo__name">PromptLib</span>
     </a>
 
     <div class="header-search">
@@ -32,10 +40,59 @@
     <div class="header-actions">
       <button id="addPromptBtn" class="btn btn--primary btn--sm">+ New Prompt</button>
 
-      <button id="exportBtn" class="btn btn--secondary btn--sm" title="Export prompts">⬇ Export</button>
-      <button id="importBtn" class="btn btn--secondary btn--sm" title="Import prompts">⬆ Import</button>
-      <input id="importFileInput" type="file" accept=".json" style="display:none" aria-hidden="true">
+      <!-- Export dropdown -->
+      <div class="hdr-dropdown" id="exportDropdown">
+        <button id="exportBtn" class="btn btn--secondary btn--sm hdr-dropdown__trigger">
+          ⬇ Export <span class="hdr-dropdown__arrow">▾</span>
+        </button>
+        <div class="hdr-dropdown__menu" id="exportMenu" role="menu">
+          <div class="hdr-dropdown__label">Choose format</div>
+          <button class="hdr-dropdown__item" data-export-fmt="json" role="menuitem">
+            <span>📄</span>
+            <div><div>JSON</div><div class="hdr-dropdown__hint">Machine-readable, re-importable</div></div>
+          </button>
+          <button class="hdr-dropdown__item" data-export-fmt="csv" role="menuitem">
+            <span>📊</span>
+            <div><div>CSV / Excel</div><div class="hdr-dropdown__hint">Open in any spreadsheet</div></div>
+          </button>
+          <button class="hdr-dropdown__item" data-export-fmt="pdf" role="menuitem">
+            <span>📑</span>
+            <div><div>PDF</div><div class="hdr-dropdown__hint">Print-ready document</div></div>
+          </button>
+          <div class="hdr-dropdown__divider"></div>
+          <button class="hdr-dropdown__item hdr-dropdown__item--select" id="toggleSelectMode" role="menuitem">
+            <span>☑</span>
+            <div><div>Select specific prompts</div><div class="hdr-dropdown__hint">Choose which ones to export</div></div>
+          </button>
+          <div class="hdr-dropdown__footer" id="exportScopeNote">Exporting all prompts</div>
+        </div>
+      </div>
 
+      <!-- Import dropdown -->
+      <div class="hdr-dropdown" id="importDropdown">
+        <button id="importBtn" class="btn btn--secondary btn--sm hdr-dropdown__trigger">
+          ⬆ Import <span class="hdr-dropdown__arrow">▾</span>
+        </button>
+        <div class="hdr-dropdown__menu" id="importMenu" role="menu">
+          <div class="hdr-dropdown__label">Import from file</div>
+          <button class="hdr-dropdown__item" id="importJsonBtn" role="menuitem">
+            <span>📄</span>
+            <div><div>JSON file</div><div class="hdr-dropdown__hint">PromptLib export or custom JSON</div></div>
+          </button>
+          <button class="hdr-dropdown__item" id="importCsvBtn" role="menuitem">
+            <span>📊</span>
+            <div><div>CSV / Excel file</div><div class="hdr-dropdown__hint">Any spreadsheet — columns auto-detected</div></div>
+          </button>
+          <div class="hdr-dropdown__divider"></div>
+          <button class="hdr-dropdown__item" id="downloadTemplateBtn" role="menuitem">
+            <span>⬇</span>
+            <div><div>Download CSV template</div><div class="hdr-dropdown__hint">Get the correct format to fill in</div></div>
+          </button>
+        </div>
+      </div>
+      <input id="importFileInput" type="file" accept=".json,.csv" style="display:none" aria-hidden="true">
+
+      <button id="shortcutsBtn" class="icon-btn" aria-label="Keyboard shortcuts" title="Keyboard shortcuts (Ctrl+K)">⌨️</button>
       <button id="themeToggle" class="icon-btn" aria-label="Toggle dark mode" title="Toggle theme">🌙</button>
 
       <div class="user-menu">
@@ -58,6 +115,7 @@
   </header>
 
   <div class="app-body">
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
     <!-- ── SIDEBAR ── -->
     <aside class="app-sidebar" id="appSidebar" aria-label="Library navigation">
@@ -211,6 +269,46 @@
   </div>
 </div>
 
+<!-- ── SELECTION BAR (fixed bottom, shown in select mode) ── -->
+<div class="selection-bar" id="selectionBar" role="status" aria-live="polite">
+  <div class="selection-bar__info">
+    <span id="selectionCount">0</span> prompt<span id="selectionPlural">s</span> selected
+  </div>
+  <div class="selection-bar__actions">
+    <button class="btn btn--ghost btn--sm" id="selectAllBtn">Select all</button>
+    <button class="btn btn--ghost btn--sm" id="clearSelBtn">Clear</button>
+    <div class="hdr-dropdown hdr-dropdown--up" id="exportSelDropdown">
+      <button class="btn btn--primary btn--sm hdr-dropdown__trigger" id="exportSelBtn">Export selected ▾</button>
+      <div class="hdr-dropdown__menu" id="exportSelMenu" role="menu">
+        <button class="hdr-dropdown__item" data-sel-fmt="json" role="menuitem">📄 JSON</button>
+        <button class="hdr-dropdown__item" data-sel-fmt="csv" role="menuitem">📊 CSV / Excel</button>
+        <button class="hdr-dropdown__item" data-sel-fmt="pdf" role="menuitem">📑 PDF</button>
+      </div>
+    </div>
+    <button class="btn btn--secondary btn--sm" id="bulkFavBtn">⭐ Favorite</button>
+    <button class="btn btn--danger btn--sm" id="bulkDeleteBtn">🗑 Delete</button>
+    <button class="btn btn--ghost btn--sm" id="cancelSelectBtn">✕ Exit</button>
+  </div>
+</div>
+
+<!-- ── IMPORT PREVIEW MODAL ── -->
+<div id="importPreviewBackdrop" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="importPreviewTitle">
+  <div class="modal" style="max-width:600px;">
+    <div class="modal__header">
+      <h2 id="importPreviewTitle" class="modal__title">Import Preview</h2>
+      <button class="modal__close btn btn--icon" id="importPreviewClose" aria-label="Close">×</button>
+    </div>
+    <div class="modal__body">
+      <p id="importPreviewSummary" class="text-sm text-muted" style="margin-bottom:var(--space-4);"></p>
+      <div id="importPreviewTable" class="import-preview-table"></div>
+    </div>
+    <div class="modal__footer">
+      <button class="btn btn--secondary" id="importPreviewCancel">Cancel</button>
+      <button class="btn btn--primary" id="importPreviewConfirm">Import all</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── DELETE CONFIRM MODAL ── -->
 <div id="deleteModalBackdrop" class="modal-backdrop" role="dialog" aria-modal="true">
   <div class="modal confirm-dialog">
@@ -230,6 +328,35 @@
   </div>
 </div>
 
+<!-- ── KEYBOARD SHORTCUTS MODAL ── -->
+<div id="shortcutsBackdrop" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="shortcutsTitle">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal__header">
+      <h2 id="shortcutsTitle" class="modal__title">⌨️ Keyboard Shortcuts</h2>
+      <button id="shortcutsClose" class="modal__close btn btn--icon" aria-label="Close">×</button>
+    </div>
+    <div class="modal__body">
+      <div class="shortcuts-grid">
+        <span class="shortcut-key"><kbd class="kbd">Ctrl</kbd>+<kbd class="kbd">N</kbd></span>
+        <span class="shortcut-desc">New Prompt</span>
+
+        <span class="shortcut-key"><kbd class="kbd">Ctrl</kbd>+<kbd class="kbd">K</kbd></span>
+        <span class="shortcut-desc">Show keyboard shortcuts</span>
+
+        <span class="shortcut-key"><kbd class="kbd">/</kbd></span>
+        <span class="shortcut-desc">Focus search bar</span>
+
+        <span class="shortcut-key"><kbd class="kbd">Esc</kbd></span>
+        <span class="shortcut-desc">Close modal / exit selection mode</span>
+      </div>
+    </div>
+    <div class="modal__footer">
+      <button class="btn btn--primary" id="shortcutsCloseBtn">Got it</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="js/core/constants.js"></script>
 <script src="js/core/storage.js"></script>
 <script src="js/core/crypto.js"></script>

@@ -156,14 +156,19 @@
 
   const buildCard = (prompt) => {
     const card = document.createElement('div');
-    card.className = 'prompt-card';
+    const isSelected = selState.ids.has(prompt.id);
+    card.className = `prompt-card${selState.active ? ' is-selectable' : ''}${isSelected ? ' is-selected' : ''}`;
     card.dataset.id = prompt.id;
 
     const cat = CATEGORIES.find(c => c.id === prompt.category) || { icon: '📄', label: prompt.category };
     const tags = (prompt.tags || []).slice(0, 3).map(t => `<span class="tag">${Validator.sanitizeHtml(t)}</span>`).join('');
     const favClass = prompt.isFavorite ? 'is-favorite' : '';
+    const checkboxHtml = selState.active
+      ? `<div class="card-checkbox${isSelected ? ' is-checked' : ''}" aria-hidden="true">${isSelected ? '✓' : ''}</div>`
+      : '';
 
     card.innerHTML = `
+      ${checkboxHtml}
       <div class="prompt-card__top">
         <span class="prompt-card__title" data-action="view">${Validator.sanitizeHtml(prompt.title)}</span>
         <span class="badge badge--${prompt.category}">${cat.icon} ${cat.label}</span>
@@ -176,11 +181,19 @@
           <button class="card-action-btn card-action-btn--fav ${favClass}" data-action="fav" aria-label="Toggle favorite" title="Favorite">★</button>
           <button class="card-action-btn" data-action="copy" aria-label="Copy prompt" title="Copy">📋</button>
           <button class="card-action-btn" data-action="edit" aria-label="Edit prompt" title="Edit">✏️</button>
+          <button class="card-action-btn" data-action="duplicate" aria-label="Duplicate prompt" title="Duplicate">⎘</button>
           <button class="card-action-btn card-action-btn--danger" data-action="delete" aria-label="Delete prompt" title="Delete">🗑</button>
         </div>
       </div>`;
 
     card.addEventListener('click', (e) => {
+      if (selState.active) {
+        if (selState.ids.has(prompt.id)) selState.ids.delete(prompt.id);
+        else selState.ids.add(prompt.id);
+        updateSelectionBar();
+        render();
+        return;
+      }
       const action = e.target.closest('[data-action]')?.dataset.action;
       if (!action) return;
       handleCardAction(action, prompt.id, e.target.closest('[data-action]'));
@@ -204,6 +217,18 @@
     if (action === 'fav') {
       PromptService.toggleFavorite(id, session.userId);
       loadPrompts();
+    }
+    if (action === 'duplicate') {
+      const p = state.prompts.find(x => x.id === id);
+      if (!p) return;
+      PromptService.create(session.userId, {
+        title:    `${p.title} (copy)`,
+        category: p.category,
+        text:     p.text,
+        tags:     [...(p.tags || [])],
+      });
+      loadPrompts();
+      ToastManager.show('Prompt duplicated.', 'success');
     }
   };
 
@@ -251,6 +276,27 @@
     state.activeFavorites = false;
     state.activeCategory  = 'all';
     render();
+  });
+
+  // ── Sidebar overlay toggle (mobile) ─────────────────────
+
+  const appSidebar      = document.getElementById('appSidebar');
+  const sidebarBackdrop = document.getElementById('sidebarBackdrop');
+  const sidebarToggleBtn = document.getElementById('sidebarToggle');
+
+  const openSidebar  = () => { appSidebar?.classList.add('is-open'); sidebarBackdrop?.classList.add('is-visible'); };
+  const closeSidebar = () => { appSidebar?.classList.remove('is-open'); sidebarBackdrop?.classList.remove('is-visible'); };
+
+  sidebarToggleBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    appSidebar?.classList.contains('is-open') ? closeSidebar() : openSidebar();
+  });
+
+  sidebarBackdrop?.addEventListener('click', closeSidebar);
+
+  // Auto-close sidebar on nav selection when in overlay mode
+  document.querySelectorAll('[data-sidebar-cat], #sidebarFavorites, #sidebarRecent').forEach(btn => {
+    btn.addEventListener('click', () => { if (window.innerWidth <= 768) closeSidebar(); });
   });
 
   // ── Sort pills ───────────────────────────────────────────
@@ -399,7 +445,10 @@
     document.getElementById('viewTitle').textContent    = p.title;
     document.getElementById('viewCategory').className   = `badge badge--${p.category}`;
     document.getElementById('viewCategory').textContent = `${cat.icon} ${cat.label}`;
-    document.getElementById('viewText').textContent     = p.text;
+    // Highlight {{variables}} — sanitize first so substitution can't inject HTML
+    const safeText = Validator.sanitizeHtml(p.text)
+      .replace(/\{\{([^}]+)\}\}/g, '<mark class="var-highlight">{{$1}}</mark>');
+    document.getElementById('viewText').innerHTML = safeText;
     document.getElementById('viewCopyCount').textContent = `Copied ${p.copyCount || 0} time${p.copyCount !== 1 ? 's' : ''}`;
 
     const tags = (p.tags || []).map(t => `<span class="tag">${Validator.sanitizeHtml(t)}</span>`).join('');
@@ -447,42 +496,425 @@
     ToastManager.show('Prompt deleted.', 'success');
   });
 
-  // ── Import / Export ──────────────────────────────────────
+  // ── Selection mode ───────────────────────────────────────
 
-  exportBtn.addEventListener('click', () => {
-    PromptService.exportPrompts(session.userId);
-    ToastManager.show('Export downloaded.', 'success');
+  const selState = { active: false, ids: new Set() };
+
+  const selectionBar    = document.getElementById('selectionBar');
+  const selectionCount  = document.getElementById('selectionCount');
+  const selectionPlural = document.getElementById('selectionPlural');
+  const exportScopeNote = document.getElementById('exportScopeNote');
+
+  const updateSelectionBar = () => {
+    const n = selState.ids.size;
+    selectionCount.textContent  = n;
+    selectionPlural.textContent = n === 1 ? '' : 's';
+    exportScopeNote.textContent = selState.active
+      ? (selState.ids.size ? `${selState.ids.size} prompt${selState.ids.size !== 1 ? 's' : ''} selected` : 'No prompts selected')
+      : 'Exporting all prompts';
+  };
+
+  const enterSelectMode = () => {
+    selState.active = true;
+    selState.ids.clear();
+    selectionBar.classList.add('is-visible');
+    document.getElementById('toggleSelectMode').querySelector('div > div:first-child').textContent = 'Exit selection mode';
+    updateSelectionBar();
+    render();
+  };
+
+  const exitSelectMode = () => {
+    selState.active = false;
+    selState.ids.clear();
+    selectionBar.classList.remove('is-visible');
+    document.getElementById('toggleSelectMode').querySelector('div > div:first-child').textContent = 'Select specific prompts';
+    updateSelectionBar();
+    render();
+  };
+
+  document.getElementById('toggleSelectMode').addEventListener('click', () => {
+    closeDropdown('exportMenu');
+    selState.active ? exitSelectMode() : enterSelectMode();
   });
 
-  importBtn.addEventListener('click', () => importFileInput.click());
+  document.getElementById('cancelSelectBtn').addEventListener('click', exitSelectMode);
+
+  document.getElementById('selectAllBtn').addEventListener('click', () => {
+    getFiltered().forEach(p => selState.ids.add(p.id));
+    updateSelectionBar();
+    render();
+  });
+
+  document.getElementById('clearSelBtn').addEventListener('click', () => {
+    selState.ids.clear();
+    updateSelectionBar();
+    render();
+  });
+
+  // ── Export helpers ────────────────────────────────────────
+
+  const esc = (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+  const downloadFile = (content, filename, mime) => {
+    const a = Object.assign(document.createElement('a'), {
+      href: URL.createObjectURL(new Blob([content], { type: mime })),
+      download: filename,
+    });
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
+  const csvCell = (val) => {
+    const s = String(val ?? '').replace(/"/g, '""');
+    return /[,"\n\r]/.test(s) ? `"${s}"` : s;
+  };
+
+  const doExport = (fmt, prompts) => {
+    if (!prompts.length) { ToastManager.show('No prompts to export.', 'warning'); return; }
+    if (fmt === 'json') {
+      const data = JSON.stringify(prompts.map(p => ({
+        title: p.title, category: p.category, text: p.text, tags: p.tags || [],
+      })), null, 2);
+      downloadFile(data, 'promptlib-export.json', 'application/json');
+      ToastManager.show(`Exported ${prompts.length} prompt${prompts.length !== 1 ? 's' : ''} as JSON.`, 'success');
+    } else if (fmt === 'csv') {
+      const rows = prompts.map(p => [
+        csvCell(p.title), csvCell(p.category), csvCell(p.text), csvCell((p.tags||[]).join('; ')),
+      ].join(','));
+      downloadFile(['title,category,text,tags', ...rows].join('\n'), 'promptlib-export.csv', 'text/csv');
+      ToastManager.show(`Exported ${prompts.length} prompt${prompts.length !== 1 ? 's' : ''} as CSV.`, 'success');
+    } else if (fmt === 'pdf') {
+      if (!window.jspdf) {
+        ToastManager.show('PDF library is still loading — please try again in a moment.', 'warning');
+        return;
+      }
+      const { jsPDF } = window.jspdf;
+      const doc      = new jsPDF({ unit: 'mm', format: 'a4' });
+      const pageW    = doc.internal.pageSize.getWidth();
+      const pageH    = doc.internal.pageSize.getHeight();
+      const ml = 18, mr = 18, contentW = pageW - ml - mr;
+      let y = 0;
+
+      const newPage = () => { doc.addPage(); y = 18; };
+      const need    = (h) => { if (y + h > pageH - 14) newPage(); };
+
+      // Header bar
+      doc.setFillColor(92, 107, 192);
+      doc.rect(0, 0, pageW, 13, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(11); doc.setFont('helvetica', 'bold');
+      doc.text('PromptLib Export', ml, 8.5);
+      doc.setFontSize(8); doc.setFont('helvetica', 'normal');
+      doc.text(`${prompts.length} prompt${prompts.length !== 1 ? 's' : ''}  |  ${new Date().toLocaleDateString()}`, pageW - mr, 8.5, { align: 'right' });
+
+      y = 22;
+      doc.setTextColor(30, 30, 30);
+
+      prompts.forEach((p, i) => {
+        need(22);
+
+        // Title row background
+        doc.setFillColor(232, 234, 246);
+        doc.roundedRect(ml, y, contentW, 9, 1.5, 1.5, 'F');
+        doc.setFontSize(10); doc.setFont('helvetica', 'bold');
+        doc.setTextColor(60, 80, 170);
+        const titleLines = doc.splitTextToSize(`${i + 1}. ${p.title}`, contentW - 28);
+        doc.text(titleLines[0], ml + 3, y + 6);
+        doc.setFontSize(7.5); doc.setFont('helvetica', 'normal');
+        doc.setTextColor(100, 110, 150);
+        doc.text(p.category.toUpperCase(), pageW - mr - 2, y + 5.8, { align: 'right' });
+        y += 12;
+
+        // Prompt text
+        doc.setFontSize(8.5); doc.setFont('helvetica', 'normal');
+        doc.setTextColor(50, 50, 50);
+        const lines = doc.splitTextToSize(p.text, contentW - 4);
+        lines.forEach(line => { need(5.5); doc.text(line, ml + 2, y); y += 5; });
+
+        // Tags
+        if (p.tags && p.tags.length) {
+          need(7);
+          y += 1.5;
+          doc.setFontSize(7.5); doc.setTextColor(130, 130, 130);
+          doc.text('Tags: ' + p.tags.join('  |  '), ml + 2, y);
+          y += 5;
+        }
+
+        // Divider
+        y += 4;
+        if (i < prompts.length - 1) {
+          need(3);
+          doc.setDrawColor(210, 214, 240);
+          doc.line(ml, y - 2, pageW - mr, y - 2);
+        }
+      });
+
+      doc.save('promptlib-export.pdf');
+      ToastManager.show(`PDF downloaded — ${prompts.length} prompt${prompts.length !== 1 ? 's' : ''}.`, 'success');
+    }
+  };
+
+  const getExportPrompts = () => selState.active && selState.ids.size
+    ? state.prompts.filter(p => selState.ids.has(p.id))
+    : state.prompts;
+
+  // Export format buttons (header dropdown)
+  document.querySelectorAll('[data-export-fmt]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      closeDropdown('exportMenu');
+      doExport(btn.dataset.exportFmt, getExportPrompts());
+    });
+  });
+
+  // Export selected format buttons (selection bar dropdown)
+  document.querySelectorAll('[data-sel-fmt]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      closeDropdown('exportSelMenu');
+      const prompts = selState.ids.size ? state.prompts.filter(p => selState.ids.has(p.id)) : [];
+      if (!prompts.length) { ToastManager.show('Select at least one prompt first.', 'warning'); return; }
+      doExport(btn.dataset.selFmt, prompts);
+    });
+  });
+
+  // ── Smart Import ──────────────────────────────────────────
+
+  let pendingImport = [];
+
+  const parseCsvRow = (line) => {
+    const result = []; let inQ = false; let cur = '';
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') { if (inQ && line[i+1]==='"') { cur += '"'; i++; } else inQ = !inQ; }
+      else if (ch === ',' && !inQ) { result.push(cur.trim()); cur = ''; }
+      else cur += ch;
+    }
+    result.push(cur.trim());
+    return result;
+  };
+
+  const VALID_CATEGORIES = ['coding','writing','marketing','creative','education'];
+  const normalizeCategory = (raw='') => {
+    const s = raw.toLowerCase().trim();
+    return VALID_CATEGORIES.includes(s) ? s : 'coding';
+  };
+
+  const parseJsonImport = (text) => {
+    try {
+      const data = JSON.parse(text);
+      const arr = Array.isArray(data) ? data : (data.prompts || []);
+      return arr
+        .filter(p => p && (p.title || p.text))
+        .map(p => ({
+          title:    String(p.title || p.name || 'Untitled').trim().slice(0, 80),
+          category: normalizeCategory(p.category || p.type),
+          text:     String(p.text || p.content || p.prompt || '').trim(),
+          tags:     Array.isArray(p.tags) ? p.tags.map(String) : [],
+        }));
+    } catch {
+      ToastManager.show('Invalid JSON — could not parse the file.', 'error');
+      return null;
+    }
+  };
+
+  const parseCsvImport = (text) => {
+    const lines = text.trim().split(/\r?\n/).filter(Boolean);
+    if (lines.length < 2) { ToastManager.show('CSV file appears empty or has only a header row.', 'error'); return null; }
+    const hdrs = parseCsvRow(lines[0]).map(h => h.toLowerCase().replace(/[^a-z0-9]/g, ''));
+    const idx = {
+      title:    hdrs.findIndex(h => ['title','name','promptname'].includes(h)),
+      category: hdrs.findIndex(h => ['category','type','cat'].includes(h)),
+      text:     hdrs.findIndex(h => ['text','prompt','content','body','prompttext'].includes(h)),
+      tags:     hdrs.findIndex(h => ['tags','tag','keywords','labels'].includes(h)),
+    };
+    if (idx.title === -1 && idx.text === -1) {
+      ToastManager.show('Could not detect required columns. Expected "title" and "text" (or similar).', 'error');
+      return null;
+    }
+    return lines.slice(1)
+      .map(line => {
+        const c = parseCsvRow(line);
+        return {
+          title:    (idx.title >= 0 ? c[idx.title] : '') || 'Untitled',
+          category: normalizeCategory(idx.category >= 0 ? c[idx.category] : ''),
+          text:     (idx.text >= 0 ? c[idx.text] : '').trim(),
+          tags:     idx.tags >= 0 && c[idx.tags] ? c[idx.tags].split(/[;,]/).map(t => t.trim()).filter(Boolean) : [],
+        };
+      })
+      .filter(p => p.title !== 'Untitled' || p.text);
+  };
+
+  const showImportPreview = (prompts) => {
+    if (!prompts.length) { ToastManager.show('No valid prompts found in the file.', 'warning'); return; }
+    pendingImport = prompts;
+    const preview = prompts.slice(0, 5);
+    document.getElementById('importPreviewSummary').textContent =
+      `Found ${prompts.length} prompt${prompts.length !== 1 ? 's' : ''} ready to import${prompts.length > 5 ? ' (showing first 5 below)' : ''}:`;
+    document.getElementById('importPreviewConfirm').textContent = `Import all ${prompts.length}`;
+    document.getElementById('importPreviewTable').innerHTML = preview.map(p => `
+      <div class="import-preview-row">
+        <div class="import-preview-row__title">${esc(p.title)}</div>
+        <span class="badge badge--${p.category}">${p.category}</span>
+        <div class="import-preview-row__text">${esc(p.text.slice(0, 120))}${p.text.length > 120 ? '…' : ''}</div>
+        ${p.tags.length ? `<div class="import-preview-row__tags">${p.tags.map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div>` : ''}
+      </div>`).join('');
+    document.getElementById('importPreviewBackdrop').classList.add('is-open');
+  };
+
+  const closeImportPreview = () => {
+    document.getElementById('importPreviewBackdrop').classList.remove('is-open');
+    pendingImport = [];
+  };
+
+  document.getElementById('importPreviewClose').addEventListener('click', closeImportPreview);
+  document.getElementById('importPreviewCancel').addEventListener('click', closeImportPreview);
+  document.getElementById('importPreviewBackdrop').addEventListener('click', (e) => {
+    if (e.target === document.getElementById('importPreviewBackdrop')) closeImportPreview();
+  });
+
+  document.getElementById('importPreviewConfirm').addEventListener('click', () => {
+    let count = 0;
+    pendingImport.forEach(p => {
+      const r = PromptService.create(session.userId, p);
+      if (r) count++;
+    });
+    closeImportPreview();
+    loadPrompts();
+    ToastManager.show(`Successfully imported ${count} prompt${count !== 1 ? 's' : ''}.`, 'success');
+  });
+
+  const triggerImport = (accept) => {
+    importFileInput.accept = accept;
+    importFileInput.click();
+    closeDropdown('importMenu');
+  };
+
+  document.getElementById('importJsonBtn').addEventListener('click', () => triggerImport('.json'));
+  document.getElementById('importCsvBtn').addEventListener('click',  () => triggerImport('.csv'));
+
+  document.getElementById('downloadTemplateBtn').addEventListener('click', () => {
+    closeDropdown('importMenu');
+    const csv = [
+      'title,category,text,tags',
+      '"Code Review Assistant","coding","Review the following code for bugs and improvements:\n\n[PASTE CODE HERE]","code review,debugging"',
+      '"Blog Post Writer","writing","Write an engaging blog post about [TOPIC] for [AUDIENCE]. Include subheadings and a call-to-action.","blog,content writing"',
+      '"Product Description","marketing","Write a compelling product description for [PRODUCT NAME]. Highlight benefits and target [AUDIENCE].","marketing,ecommerce"',
+    ].join('\n');
+    downloadFile(csv, 'promptlib-import-template.csv', 'text/csv');
+    ToastManager.show('Template downloaded — fill it in and import it.', 'success');
+  });
+
+  importBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleDropdown('importMenu', 'exportMenu');
+  });
 
   importFileInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    const ext = file.name.split('.').pop().toLowerCase();
     const reader = new FileReader();
     reader.onload = (ev) => {
-      const result = PromptService.importPrompts(session.userId, ev.target.result);
-      if (result.success) {
-        ToastManager.show(`Imported ${result.count} prompt${result.count !== 1 ? 's' : ''}.`, 'success');
-        loadPrompts();
-      } else {
-        ToastManager.show(result.message, 'error');
-      }
+      const prompts = ext === 'csv' ? parseCsvImport(ev.target.result) : parseJsonImport(ev.target.result);
+      if (prompts) showImportPreview(prompts);
     };
     reader.readAsText(file);
     importFileInput.value = '';
   });
 
+  // ── Dropdown helpers ──────────────────────────────────────
+
+  const closeDropdown = (id) => document.getElementById(id)?.classList.remove('is-open');
+  const toggleDropdown = (id, closeOther) => {
+    if (closeOther) closeDropdown(closeOther);
+    document.getElementById(id)?.classList.toggle('is-open');
+  };
+
+  exportBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleDropdown('exportMenu', 'importMenu');
+  });
+
+  document.getElementById('exportSelBtn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleDropdown('exportSelMenu');
+  });
+
+  document.addEventListener('click', () => {
+    closeDropdown('exportMenu');
+    closeDropdown('importMenu');
+    closeDropdown('exportSelMenu');
+  });
+
+  ['exportMenu','importMenu','exportSelMenu'].forEach(id => {
+    document.getElementById(id)?.addEventListener('click', e => e.stopPropagation());
+  });
+
+  // ── Shortcuts modal ──────────────────────────────────────
+
+  const shortcutsBackdrop = document.getElementById('shortcutsBackdrop');
+
+  const openShortcutsModal  = () => shortcutsBackdrop?.classList.add('is-open');
+  const closeShortcutsModal = () => shortcutsBackdrop?.classList.remove('is-open');
+
+  document.getElementById('shortcutsBtn')?.addEventListener('click', openShortcutsModal);
+  document.getElementById('shortcutsClose')?.addEventListener('click', closeShortcutsModal);
+  document.getElementById('shortcutsCloseBtn')?.addEventListener('click', closeShortcutsModal);
+  shortcutsBackdrop?.addEventListener('click', (e) => { if (e.target === shortcutsBackdrop) closeShortcutsModal(); });
+
+  // ── Bulk actions (selection mode) ────────────────────────
+
+  document.getElementById('bulkFavBtn')?.addEventListener('click', () => {
+    if (!selState.ids.size) { ToastManager.show('Select at least one prompt first.', 'warning'); return; }
+    const count = selState.ids.size;
+    selState.ids.forEach(id => PromptService.toggleFavorite(id, session.userId));
+    exitSelectMode();
+    loadPrompts();
+    ToastManager.show(`Toggled favorite on ${count} prompt${count !== 1 ? 's' : ''}.`, 'success');
+  });
+
+  document.getElementById('bulkDeleteBtn')?.addEventListener('click', () => {
+    if (!selState.ids.size) { ToastManager.show('Select at least one prompt first.', 'warning'); return; }
+    const count = selState.ids.size;
+    selState.ids.forEach(id => PromptService.remove(id, session.userId));
+    exitSelectMode();
+    loadPrompts();
+    ToastManager.show(`Deleted ${count} prompt${count !== 1 ? 's' : ''}.`, 'success');
+  });
+
+  // ── Session expiry warning ────────────────────────────────
+
+  const SESSION_WARN_THRESHOLD = 5 * 60 * 1000; // 5 minutes
+
+  const watchSession = () => {
+    const banner = document.getElementById('sessionBanner');
+    setInterval(() => {
+      const s = AuthService.getSession();
+      if (!s) { window.location.href = 'index.html'; return; }
+      if (banner) banner.classList.toggle('is-visible', s.expiresAt - Date.now() < SESSION_WARN_THRESHOLD);
+    }, 30_000);
+  };
+
   // ── Keyboard ─────────────────────────────────────────────
 
   document.addEventListener('keydown', (e) => {
+    const inInput = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName);
     if (e.key === 'Escape') {
       closePromptModal();
       closeViewModal();
       closeDeleteModal();
+      closeShortcutsModal();
+      closeDropdown('exportMenu');
+      closeDropdown('importMenu');
+      if (selState.active) exitSelectMode();
+    }
+    if (!inInput) {
+      if (e.key === '/') { e.preventDefault(); searchInput.focus(); }
+      if (e.ctrlKey && e.key === 'n') { e.preventDefault(); openPromptModal(); }
+      if (e.ctrlKey && e.key === 'k') { e.preventDefault(); openShortcutsModal(); }
     }
   });
 
   // ── Init ─────────────────────────────────────────────────
   loadPrompts();
+  watchSession();
 })();

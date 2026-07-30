@@ -87,9 +87,11 @@
   --transition-slow:   250ms ease;
 
   /* Layout */
-  --sidebar-width:      240px;
-  --header-height:      60px;
-  --content-max-width:  1200px;
+  --sidebar-width:        240px;
+  --sidebar-width-mobile: 280px;
+  --header-height:        60px;
+  --header-height-mobile: 52px;
+  --content-max-width:    1200px;
 }
 
 [data-theme="dark"] {
