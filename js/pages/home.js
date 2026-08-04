@@ -62,6 +62,10 @@
 
   userNameEl.textContent = session.name;
   setAvatar(userAvatarEl, session.name);
+  if (UserService.isAdmin()) {
+    const adminLink = document.getElementById('adminPanelLink');
+    if (adminLink) adminLink.style.display = '';
+  }
   const menuAvatarEl = document.getElementById('menuAvatar');
   if (menuAvatarEl) setAvatar(menuAvatarEl, session.name);
   const menuNameEl = document.getElementById('menuName');
@@ -146,8 +150,10 @@
     const isSelected = selState.ids.has(prompt.id);
     const isLocked   = !!prompt.isLocked;
     const isOwner    = prompt.userId === session.userId;
+    const isPending  = prompt.status === 'pending';
+    const isRejected = prompt.status === 'rejected';
 
-    card.className = `prompt-card${selState.active?' is-selectable':''}${isSelected?' is-selected':''}${isLocked?' is-locked':''}`;
+    card.className = `prompt-card${selState.active?' is-selectable':''}${isSelected?' is-selected':''}${isLocked?' is-locked':''}${isPending?' is-pending':''}${isRejected?' is-rejected':''}`;
     card.dataset.id = prompt.id;
 
     const cat  = CATEGORIES.find(c => c.id === prompt.category) || { icon: '📄', label: prompt.category };
@@ -157,26 +163,37 @@
       ? `<div class="card-checkbox${isSelected?' is-checked':''}" aria-hidden="true">${isSelected?'✓':''}</div>`
       : '';
 
-    const lockBadge  = isLocked ? `<span class="lock-badge" title="Locked — copy only">🔒 Locked</span>` : '';
-    const ownerBadge = !isOwner ? `<span class="owner-badge" title="Created by ${esc(prompt.creatorName)}">👤 ${esc(prompt.creatorName)}</span>` : '';
+    const lockBadge     = isLocked ? `<span class="lock-badge" title="Locked — copy only">🔒 Locked</span>` : '';
+    const ownerBadge    = !isOwner ? `<span class="owner-badge" title="Created by ${esc(prompt.creatorName)}">👤 ${esc(prompt.creatorName)}</span>` : '';
+    const pendingBadge  = (isPending && isOwner) ? `<span class="status-badge status-badge--pending" title="Awaiting admin approval">⏳ Pending</span>` : '';
+    const rejectedBadge = (isRejected && isOwner) ? `<span class="status-badge status-badge--rejected" title="${esc(prompt.rejectionReason || 'Rejected by admin')}">✗ Rejected</span>` : '';
 
-    const lockBtn    = isOwner
+    const canEdit   = isOwner && !isLocked && !isPending && !isRejected;
+    const canDelete = isOwner;
+    const canCopy   = !isPending && !isRejected;
+    const canFav    = !isPending && !isRejected;
+    const canLock   = isOwner && !isPending && !isRejected;
+
+    const lockBtn = canLock
       ? (isLocked
           ? `<button class="card-action-btn card-action-btn--lock" data-action="lock" title="Unlock">🔓</button>`
           : `<button class="card-action-btn card-action-btn--lock" data-action="lock" title="Lock to protect">🔒</button>`)
       : '';
 
-    const mutableBtns = (isOwner && !isLocked) ? `
+    const mutableBtns = canEdit ? `
           <button class="card-action-btn" data-action="edit" title="Edit">✏️</button>
-          <button class="card-action-btn" data-action="duplicate" title="Duplicate">⎘</button>
-          <button class="card-action-btn card-action-btn--danger" data-action="delete" title="Delete">🗑</button>` : '';
+          <button class="card-action-btn" data-action="duplicate" title="Duplicate">⎘</button>` : '';
+
+    const deleteBtn = canDelete ? `<button class="card-action-btn card-action-btn--danger" data-action="delete" title="Delete">🗑</button>` : '';
+    const favBtn    = canFav ? `<button class="card-action-btn card-action-btn--fav ${prompt.isFavorite?'is-favorite':''}" data-action="fav" title="Favorite">★</button>` : '';
+    const copyBtn   = canCopy ? `<button class="card-action-btn" data-action="copy" title="Copy">📋</button>` : '';
 
     card.innerHTML = `
       ${checkboxHtml}
       <div class="prompt-card__top">
         <span class="prompt-card__title" data-action="view">${esc(prompt.title)}</span>
         <div style="display:flex;align-items:center;gap:var(--space-2);flex-wrap:wrap;">
-          ${lockBadge}${ownerBadge}
+          ${lockBadge}${ownerBadge}${pendingBadge}${rejectedBadge}
           <span class="badge badge--${prompt.category}">${cat.icon} ${cat.label}</span>
         </div>
       </div>
@@ -185,9 +202,7 @@
       <div class="prompt-card__footer">
         <span class="copy-count">📋 Copied ${prompt.copyCount||0} time${prompt.copyCount!==1?'s':''}</span>
         <div class="prompt-card__actions">
-          <button class="card-action-btn card-action-btn--fav ${prompt.isFavorite?'is-favorite':''}" data-action="fav" title="Favorite">★</button>
-          <button class="card-action-btn" data-action="copy" title="Copy">📋</button>
-          ${lockBtn}${mutableBtns}
+          ${favBtn}${copyBtn}${lockBtn}${mutableBtns}${deleteBtn}
         </div>
       </div>`;
 
@@ -396,8 +411,11 @@
       await PromptService.update(editingId, session.userId, { title, category, text, tags: tagList });
       ToastManager.show('Prompt updated.', 'success');
     } else {
-      await PromptService.create(session.userId, { title, category, text, tags: tagList });
-      ToastManager.show('Prompt added.', 'success');
+      const newPrompt = await PromptService.create(session.userId, { title, category, text, tags: tagList });
+      const msg = (newPrompt.status === 'pending')
+        ? 'Prompt submitted for review. It will appear in the library once approved.'
+        : 'Prompt added.';
+      ToastManager.show(msg, newPrompt.status === 'pending' ? 'info' : 'success');
     }
     LoaderManager.hideInline(btn);
     closePromptModal();

@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co;">
+  <title>Admin Panel — PromptLib</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+<div class="admin-layout" id="adminLayout" style="display:none;">
+
+  <!-- HEADER -->
+  <header class="admin-header" role="banner">
+    <a href="home.html" class="admin-header__logo">
+      <span>✨</span> PromptLib
+    </a>
+    <span class="admin-header__badge">ADMIN</span>
+    <div class="admin-header__spacer"></div>
+    <div class="admin-header__user">
+      <div id="adminAvatar" class="avatar" style="width:30px;height:30px;font-size:12px;flex-shrink:0;"></div>
+      <span id="adminName"></span>
+    </div>
+    <a href="home.html" class="btn btn--secondary btn--sm">← Back to App</a>
+    <button id="adminLogoutBtn" class="btn btn--ghost btn--sm">Sign Out</button>
+    <button id="adminThemeBtn" class="icon-btn" aria-label="Toggle theme" title="Toggle theme">🌙</button>
+  </header>
+
+  <main class="admin-main" role="main">
+    <h1 class="admin-page-title">Admin Panel</h1>
+
+    <!-- Stats -->
+    <div class="admin-stats">
+      <div class="stat-card stat-card--pending">
+        <div class="stat-card__value" id="statPendingUsers">—</div>
+        <div class="stat-card__label">Pending Users</div>
+      </div>
+      <div class="stat-card stat-card--users">
+        <div class="stat-card__value" id="statTotalUsers">—</div>
+        <div class="stat-card__label">Total Users</div>
+      </div>
+      <div class="stat-card stat-card--prompts">
+        <div class="stat-card__value" id="statPendingPrompts">—</div>
+        <div class="stat-card__label">Pending Prompts</div>
+      </div>
+      <div class="stat-card stat-card--total">
+        <div class="stat-card__value" id="statTotalPrompts">—</div>
+        <div class="stat-card__label">Total Prompts</div>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="admin-tabs" role="tablist">
+      <button class="admin-tab is-active" role="tab" data-tab="users" aria-selected="true">
+        Users <span class="admin-tab__count" id="usersTabCount">0</span>
+      </button>
+      <button class="admin-tab" role="tab" data-tab="prompts" aria-selected="false">
+        Prompts <span class="admin-tab__count" id="promptsTabCount">0</span>
+      </button>
+    </div>
+
+    <!-- Users Panel -->
+    <div id="tabUsers" class="admin-tab-panel is-active" role="tabpanel">
+
+      <!-- Pending Users -->
+      <div class="admin-section">
+        <div class="admin-section__header">
+          <div>
+            <div class="admin-section__title">Pending Approval</div>
+            <div class="admin-section__subtitle">New users waiting to be approved</div>
+          </div>
+        </div>
+        <div id="pendingUsersContainer">
+          <div class="admin-empty">
+            <div class="admin-empty__icon">✅</div>
+            <div class="admin-empty__text">No pending users</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- All Users -->
+      <div class="admin-section">
+        <div class="admin-section__header">
+          <div>
+            <div class="admin-section__title">All Users</div>
+            <div class="admin-section__subtitle">Manage roles and access</div>
+          </div>
+        </div>
+        <div id="allUsersContainer">
+          <div class="admin-empty">
+            <div class="admin-empty__icon">👥</div>
+            <div class="admin-empty__text">Loading users…</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Prompts Panel -->
+    <div id="tabPrompts" class="admin-tab-panel" role="tabpanel">
+
+      <!-- Pending Prompts -->
+      <div class="admin-section">
+        <div class="admin-section__header">
+          <div>
+            <div class="admin-section__title">Pending Approval</div>
+            <div class="admin-section__subtitle">New prompts awaiting review before going live</div>
+          </div>
+        </div>
+        <div id="pendingPromptsContainer">
+          <div class="admin-empty">
+            <div class="admin-empty__icon">✅</div>
+            <div class="admin-empty__text">No pending prompts</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- All Prompts -->
+      <div class="admin-section">
+        <div class="admin-section__header">
+          <div>
+            <div class="admin-section__title">All Prompts</div>
+            <div class="admin-section__subtitle">View and manage all prompts in the library</div>
+          </div>
+        </div>
+        <div id="allPromptsContainer">
+          <div class="admin-empty">
+            <div class="admin-empty__icon">📚</div>
+            <div class="admin-empty__text">Loading prompts…</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Reject Reason Modal -->
+<div id="rejectModalBackdrop" class="reason-modal-backdrop" role="dialog" aria-modal="true">
+  <div class="reason-modal">
+    <div class="reason-modal__title" id="rejectModalTitle">Reject — Add Reason (Optional)</div>
+    <textarea id="rejectReasonInput" class="form-textarea" rows="3"
+              placeholder="Briefly explain why this is being rejected…"
+              style="width:100%;resize:vertical;"></textarea>
+    <div class="reason-modal__actions">
+      <button id="rejectCancelBtn" class="btn btn--secondary">Cancel</button>
+      <button id="rejectConfirmBtn" class="btn btn--danger">Confirm Rejection</button>
+    </div>
+  </div>
+</div>
+
+<!-- Prompt Preview Modal -->
+<div id="previewModalBackdrop" class="reason-modal-backdrop" role="dialog" aria-modal="true">
+  <div class="reason-modal" style="max-width:560px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-4);">
+      <div class="reason-modal__title" id="previewModalTitle" style="margin:0;"></div>
+      <button id="previewCloseBtn" class="btn btn--icon" aria-label="Close">×</button>
+    </div>
+    <div id="previewModalText" class="prompt-preview"></div>
+    <div class="reason-modal__actions" style="margin-top:var(--space-4);">
+      <button id="previewApproveBtn" class="btn btn--primary" data-id="">✓ Approve</button>
+      <button id="previewRejectBtn" class="btn btn--danger" data-id="">✗ Reject</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/core/supabase.config.js"></script>
+<script src="js/core/constants.js"></script>
+<script src="js/core/storage.js"></script>
+<script src="js/core/crypto.js"></script>
+<script src="js/core/validator.js"></script>
+<script src="js/services/otp.service.js"></script>
+<script src="js/services/auth.service.js"></script>
+<script src="js/services/user.service.js"></script>
+<script src="js/services/prompt.service.js"></script>
+<script src="js/ui/toast.js"></script>
+<script src="js/ui/loader.js"></script>
+<script src="js/pages/admin.js"></script>
+</body>
+</html>

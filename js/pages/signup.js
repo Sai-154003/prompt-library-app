@@ -207,8 +207,12 @@
     }
 
     AuthService.markVerified(currentEmail);
+    const registeredUser = AuthService.findUser(currentEmail);
+    if (registeredUser) {
+      await UserService.createPendingUser(registeredUser.id, currentEmail, registeredUser.name);
+    }
     clearInterval(timerInterval);
-    window.location.href = 'index.html?registered=1';
+    window.location.href = 'index.html?pending=1';
   });
 
   if (AuthService.getSession()) window.location.href = 'home.html';

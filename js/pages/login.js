@@ -96,6 +96,30 @@
       return;
     }
 
+    LoaderManager.showInline(submitBtn);
+    let access;
+    try {
+      access = await UserService.checkLoginAccess(result.session.userId, result.session.email, result.session.name);
+    } catch {
+      AuthService.logout();
+      LoaderManager.hideInline(submitBtn);
+      showError(emailInput, 'Could not verify account status. Please check your connection and try again.');
+      return;
+    }
+    LoaderManager.hideInline(submitBtn);
+
+    if (!access.allowed) {
+      AuthService.logout();
+      if (access.status === 'rejected') {
+        showError(emailInput, 'Your account access has been revoked. Please contact an administrator.');
+      } else {
+        showError(emailInput, 'Your account is awaiting admin approval. You will be notified once approved.');
+      }
+      return;
+    }
+
+    UserService.setLocalAppUser({ role: access.role, status: access.status });
+    await UserService.updateLastLogin(result.session.userId);
     window.location.href = 'home.html';
   });
 
@@ -107,6 +131,9 @@
   const params = new URLSearchParams(location.search);
   if (params.get('registered') === '1') {
     ToastManager.show('Account created successfully. Please log in.', 'success', 6000);
+  }
+  if (params.get('pending') === '1') {
+    ToastManager.show('Account created! Awaiting admin approval before you can log in.', 'info', 8000);
   }
   if (params.get('reset') === '1') {
     ToastManager.show('Password reset successfully. Please log in.', 'success', 6000);

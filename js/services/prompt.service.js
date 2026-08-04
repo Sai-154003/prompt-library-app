@@ -23,18 +23,20 @@ window.PromptService = (() => {
   };
 
   const _toJs = (row, favIds = new Set()) => ({
-    id:          row.id,
-    userId:      row.user_id,
-    title:       row.title,
-    category:    row.category,
-    text:        row.text,
-    tags:        row.tags || [],
-    isLocked:    row.is_locked,
-    copyCount:   row.copy_count,
-    createdAt:   row.created_at,
-    updatedAt:   row.updated_at,
-    isFavorite:  favIds.has(row.id),
-    creatorName: _lookupName(row.user_id),
+    id:              row.id,
+    userId:          row.user_id,
+    title:           row.title,
+    category:        row.category,
+    text:            row.text,
+    tags:            row.tags || [],
+    isLocked:        row.is_locked,
+    copyCount:       row.copy_count,
+    createdAt:       row.created_at,
+    updatedAt:       row.updated_at,
+    isFavorite:      favIds.has(row.id),
+    creatorName:     _lookupName(row.user_id),
+    status:          row.status || 'approved',
+    rejectionReason: row.rejection_reason || null,
   });
 
   const seedForUser = async (userId) => {
@@ -51,6 +53,7 @@ window.PromptService = (() => {
       copy_count: Math.floor(Math.random() * 20),
       created_at: now - (SAMPLE_PROMPTS.length - i) * 3600000,
       updated_at: now - (SAMPLE_PROMPTS.length - i) * 3600000,
+      status:     'approved',
     }));
     const { data: inserted } = await sb.from('prompts').insert(rows).select('id');
     if (inserted && inserted.length >= 2) {
@@ -62,8 +65,19 @@ window.PromptService = (() => {
   };
 
   const getAll = async (userId) => {
+    const isAdminUser = window.UserService ? UserService.isAdmin() : false;
+
+    let promptQuery;
+    if (isAdminUser) {
+      promptQuery = sb.from('prompts').select('*').order('created_at', { ascending: false });
+    } else {
+      promptQuery = sb.from('prompts').select('*')
+        .or(`status.eq.approved,user_id.eq.${userId}`)
+        .order('created_at', { ascending: false });
+    }
+
     const [{ data: prompts, error }, { data: favRow }] = await Promise.all([
-      sb.from('prompts').select('*').order('created_at', { ascending: false }),
+      promptQuery,
       sb.from('user_favorites').select('prompt_ids').eq('user_id', userId).maybeSingle(),
     ]);
     if (error) throw error;
@@ -72,6 +86,7 @@ window.PromptService = (() => {
   };
 
   const create = async (userId, data) => {
+    const isAdminUser = window.UserService ? UserService.isAdmin() : false;
     const now = Date.now();
     const { data: row, error } = await sb.from('prompts').insert({
       user_id:    userId,
@@ -83,6 +98,7 @@ window.PromptService = (() => {
       copy_count: 0,
       created_at: now,
       updated_at: now,
+      status:     isAdminUser ? 'approved' : 'pending',
     }).select().single();
     if (error) throw error;
     return _toJs(row);
@@ -151,6 +167,7 @@ window.PromptService = (() => {
 
   const importPrompts = async (userId, items) => {
     if (!items || !items.length) return { success: false, message: 'No prompts to import.' };
+    const isAdminUser = window.UserService ? UserService.isAdmin() : false;
     const now = Date.now();
     const { error } = await sb.from('prompts').insert(items.map(p => ({
       user_id:    userId,
@@ -162,14 +179,40 @@ window.PromptService = (() => {
       copy_count: 0,
       created_at: now,
       updated_at: now,
+      status:     isAdminUser ? 'approved' : 'pending',
     })));
     if (error) return { success: false, message: error.message };
     return { success: true, count: items.length };
+  };
+
+  const getAllAdmin = async () => {
+    const { data } = await sb.from('prompts').select('*').order('created_at', { ascending: false });
+    return (data || []).map(row => _toJs(row));
+  };
+
+  const approvePrompt = async (id, adminId) => {
+    const { error } = await sb.from('prompts').update({
+      status:      'approved',
+      reviewed_by: adminId,
+      reviewed_at: Date.now(),
+    }).eq('id', id);
+    return !error;
+  };
+
+  const rejectPrompt = async (id, adminId, reason) => {
+    const { error } = await sb.from('prompts').update({
+      status:           'rejected',
+      rejection_reason: reason || null,
+      reviewed_by:      adminId,
+      reviewed_at:      Date.now(),
+    }).eq('id', id);
+    return !error;
   };
 
   return Object.freeze({
     seedForUser, getAll, create, update, remove,
     toggleFavorite, toggleLock, incrementCopyCount, deleteAllForUser,
     exportPrompts, importPrompts,
+    getAllAdmin, approvePrompt, rejectPrompt,
   });
 })();

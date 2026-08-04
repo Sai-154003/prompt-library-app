@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="css/variables.css">
   <link rel="stylesheet" href="css/base.css">
   <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="css/admin.css">
 </head>
 <body>
 <div class="app-layout">
@@ -107,6 +108,7 @@
             <div style="font-size:var(--text-sm);font-weight:var(--fw-semibold);text-align:center;" id="menuName"></div>
           </div>
           <a href="profile.html" class="user-menu__item" role="menuitem">👤 Profile &amp; Settings</a>
+          <a href="admin.html" id="adminPanelLink" class="user-menu__item" role="menuitem" style="display:none;">⚙️ Admin Panel</a>
           <div class="user-menu__divider"></div>
           <button id="logoutBtn" class="user-menu__item user-menu__item--danger" role="menuitem">🚪 Sign Out</button>
         </div>
@@ -372,6 +374,7 @@
 <script src="js/core/validator.js"></script>
 <script src="js/services/otp.service.js"></script>
 <script src="js/services/auth.service.js"></script>
+<script src="js/services/user.service.js"></script>
 <script src="js/services/prompt.service.js"></script>
 <script src="js/ui/toast.js"></script>
 <script src="js/ui/loader.js"></script>

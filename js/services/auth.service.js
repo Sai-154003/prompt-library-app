@@ -116,6 +116,7 @@ window.AuthService = (() => {
 
   const logout = () => {
     store.remove(STORAGE_KEYS.SESSION);
+    localStorage.removeItem('pl_app_user');
   };
 
   const getSession = () => {
