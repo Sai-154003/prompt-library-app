@@ -324,6 +324,24 @@
   </div>
 </div>
 
+<!-- ── PROMPT SUBMITTED MODAL ── -->
+<div id="promptSubmittedBackdrop" class="modal-backdrop" role="dialog" aria-modal="true">
+  <div class="modal confirm-dialog" style="max-width:420px;">
+    <div class="modal__header" style="border:none;padding-bottom:0;">
+      <div></div>
+      <button id="promptSubmittedClose" class="modal__close btn btn--icon" aria-label="Close">×</button>
+    </div>
+    <div class="modal__body" style="text-align:center;padding-top:var(--space-2);">
+      <div class="confirm-icon">📝</div>
+      <div class="confirm-title">Prompt Submitted!</div>
+      <p class="confirm-message">Your prompt has been sent for admin review. It will appear in the library for everyone once approved.<br><br>You can still see it in your list marked as <strong>⏳ Pending</strong>.</p>
+    </div>
+    <div class="modal__footer" style="justify-content:center;">
+      <button id="promptSubmittedOkBtn" class="btn btn--primary" style="min-width:120px;">Got it</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── DELETE CONFIRM MODAL ── -->
 <div id="deleteModalBackdrop" class="modal-backdrop" role="dialog" aria-modal="true">
   <div class="modal confirm-dialog">

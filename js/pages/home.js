@@ -413,16 +413,15 @@
       ToastManager.show('Prompt updated.', 'success');
     } else {
       const newPrompt = await PromptService.create(session.userId, { title, category, text, tags: tagList });
-      const msg = (newPrompt.status === 'pending')
-        ? 'Prompt submitted for review. It will appear in the library once approved.'
-        : 'Prompt added.';
-      ToastManager.show(msg, newPrompt.status === 'pending' ? 'info' : 'success');
       if (newPrompt.status === 'pending') {
+        document.getElementById('promptSubmittedBackdrop').classList.add('is-open');
         EmailService.sendNotification(
           AppConfig.ADMIN_EMAIL, AppConfig.ADMIN_NAME,
           'New prompt awaiting approval',
           `${session.name} submitted a new prompt titled "${title}" for your review. Please log in to the admin panel to approve or reject it.`
         );
+      } else {
+        ToastManager.show('Prompt added.', 'success');
       }
     }
     LoaderManager.hideInline(btn);
@@ -484,6 +483,11 @@
   document.getElementById('deleteModalClose').addEventListener('click', closeDeleteModal);
   document.getElementById('deleteCancelBtn').addEventListener('click', closeDeleteModal);
   deleteModal.addEventListener('click', (e) => { if (e.target === deleteModal) closeDeleteModal(); });
+
+  const closeSubmittedModal = () => document.getElementById('promptSubmittedBackdrop').classList.remove('is-open');
+  document.getElementById('promptSubmittedClose').addEventListener('click', closeSubmittedModal);
+  document.getElementById('promptSubmittedOkBtn').addEventListener('click', closeSubmittedModal);
+  document.getElementById('promptSubmittedBackdrop').addEventListener('click', (e) => { if (e.target === document.getElementById('promptSubmittedBackdrop')) closeSubmittedModal(); });
 
   document.getElementById('deleteConfirmBtn').addEventListener('click', async () => {
     if (!deletingId) return;
@@ -765,7 +769,7 @@
   document.addEventListener('keydown', (e) => {
     const inInput = ['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName);
     if (e.key === 'Escape') {
-      closePromptModal(); closeViewModal(); closeDeleteModal(); closeShortcutsModal();
+      closePromptModal(); closeViewModal(); closeDeleteModal(); closeShortcutsModal(); closeSubmittedModal();
       closeDropdown('exportMenu'); closeDropdown('importMenu');
       if (selState.active) exitSelectMode();
     }
