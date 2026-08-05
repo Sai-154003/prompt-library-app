@@ -255,7 +255,9 @@
       if (access.status === 'rejected') {
         showUserError('email', 'Your account access has been revoked. Please contact an administrator.');
       } else {
-        window.location.href = 'pending-approval.html';
+        const uid = encodeURIComponent(result.session.userId || '');
+        const em  = encodeURIComponent(result.session.email || '');
+        window.location.href = `pending-approval.html?id=${uid}&email=${em}`;
       }
       return;
     }

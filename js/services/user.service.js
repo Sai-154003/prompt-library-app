@@ -28,8 +28,16 @@ window.UserService = (() => {
     return !error;
   };
 
+  const getUserByEmail = async (email) => {
+    const { data } = await sb.from('app_users').select('*').eq('email', email.toLowerCase().trim()).maybeSingle();
+    return data;
+  };
+
   const checkLoginAccess = async (userId, email, name) => {
-    const user = await getUser(userId);
+    let user = await getUser(userId);
+    if (!user && email) {
+      user = await getUserByEmail(email);
+    }
     if (!user) return { allowed: false, status: 'pending', role: 'user' };
     return { allowed: user.status === 'approved', status: user.status, role: user.role };
   };

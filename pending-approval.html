@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co;">
   <title>Account Under Review — PromptLib</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -34,15 +36,19 @@
     .pending-icon {
       width: 80px;
       height: 80px;
-      background: #FFF8E1;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
       font-size: 40px;
       margin: 0 auto var(--space-6);
-      border: 3px solid #FFD54F;
+      border: 3px solid;
+      transition: background 0.4s, border-color 0.4s;
     }
+    .pending-icon--waiting  { background: #FFF8E1; border-color: #FFD54F; }
+    .pending-icon--approved { background: #E8F5E9; border-color: #66BB6A; }
+    .pending-icon--rejected { background: #FFEBEE; border-color: #EF5350; }
+    .pending-icon--checking { background: #E3F2FD; border-color: #42A5F5; }
 
     .pending-title {
       font-size: var(--text-2xl);
@@ -126,10 +132,12 @@
       cursor: pointer;
       border: none;
       text-decoration: none;
-      transition: background var(--transition-base);
+      transition: background var(--transition-base), opacity var(--transition-base);
     }
-    .btn--primary { background: var(--color-primary); color: white; }
+    .btn--primary   { background: var(--color-primary); color: white; }
     .btn--primary:hover { background: var(--color-primary-hover); }
+    .btn--success   { background: #2E7D32; color: white; font-size: var(--text-lg); padding: 14px 24px; }
+    .btn--success:hover { background: #1B5E20; }
     .btn--ghost {
       background: transparent;
       color: var(--text-secondary);
@@ -137,6 +145,7 @@
     }
     .btn--ghost:hover { background: var(--bg-hover); }
     .btn--full { width: 100%; }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
     .logo {
       display: flex;
@@ -157,6 +166,52 @@
       font-weight: var(--fw-bold);
       color: var(--text-primary);
     }
+
+    .status-bar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-2);
+      font-size: var(--text-xs);
+      color: var(--text-muted);
+      margin-top: var(--space-4);
+    }
+
+    .status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--text-muted);
+    }
+    .status-dot--checking { background: #42A5F5; animation: pulse 1.2s infinite; }
+    .status-dot--approved { background: #66BB6A; }
+    .status-dot--pending  { background: #FFB300; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    .approved-banner {
+      background: #E8F5E9;
+      border: 1.5px solid #66BB6A;
+      border-radius: var(--radius-lg);
+      padding: var(--space-5);
+      margin-bottom: var(--space-6);
+      color: #1B5E20;
+      font-size: var(--text-sm);
+      line-height: var(--lh-loose);
+    }
+
+    .rejected-banner {
+      background: #FFEBEE;
+      border: 1.5px solid #EF5350;
+      border-radius: var(--radius-lg);
+      padding: var(--space-5);
+      margin-bottom: var(--space-6);
+      color: #B71C1C;
+      font-size: var(--text-sm);
+      line-height: var(--lh-loose);
+    }
   </style>
 </head>
 <body>
@@ -168,15 +223,28 @@
       <span class="logo__name">PromptLib</span>
     </div>
 
-    <div class="pending-icon">⏳</div>
+    <!-- Dynamic icon changes class based on state -->
+    <div class="pending-icon pending-icon--waiting" id="statusIcon">⏳</div>
 
-    <h1 class="pending-title">Account Created — Awaiting Approval</h1>
-    <p class="pending-subtitle">
+    <h1 class="pending-title" id="statusTitle">Account Created — Awaiting Approval</h1>
+    <p class="pending-subtitle" id="statusSubtitle">
       Your account has been successfully created. Before you can access the library,
       an administrator needs to review and approve your request.
     </p>
 
-    <div class="pending-steps">
+    <!-- Shown only when approved -->
+    <div class="approved-banner" id="approvedBanner" style="display:none">
+      Your account has been <strong>approved</strong>! You can now sign in and start using PromptLib.
+      Click the button below to go to the portal and sign in.
+    </div>
+
+    <!-- Shown only when rejected -->
+    <div class="rejected-banner" id="rejectedBanner" style="display:none">
+      Your account access request has been <strong>declined</strong>. Please contact your administrator for more information.
+    </div>
+
+    <!-- Steps — hidden once approved/rejected -->
+    <div class="pending-steps" id="pendingSteps">
       <p class="pending-steps__title">What happens next?</p>
 
       <div class="pending-step">
@@ -196,16 +264,157 @@
       <div class="pending-step">
         <div class="pending-step__num">3</div>
         <div class="pending-step__text">
-          <strong>Sign in</strong> — If approved, come back to the portal and sign in with your credentials.
+          <strong>Sign in</strong> — If approved, click "Check Status" below or go to the portal and sign in with your credentials.
         </div>
       </div>
     </div>
 
-    <div class="pending-actions">
-      <a href="portal.html" class="btn btn--primary btn--full">Back to Portal</a>
+    <div class="pending-actions" id="pendingActions">
+      <button type="button" id="checkStatusBtn" class="btn btn--primary btn--full">Check Approval Status</button>
+      <a href="portal.html" class="btn btn--ghost btn--full">Back to Portal</a>
+    </div>
+
+    <div class="pending-actions" id="approvedActions" style="display:none">
+      <a href="portal.html" class="btn btn--success btn--full">Sign In Now →</a>
+    </div>
+
+    <div class="pending-actions" id="rejectedActions" style="display:none">
+      <a href="portal.html" class="btn btn--ghost btn--full">Back to Portal</a>
+    </div>
+
+    <div class="status-bar" id="statusBar">
+      <span class="status-dot status-dot--pending" id="statusDot"></span>
+      <span id="statusText">Auto-checks every 30 seconds</span>
     </div>
 
   </div>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/core/supabase.config.js"></script>
+<script>
+(async () => {
+  const params     = new URLSearchParams(window.location.search);
+  const urlId      = params.get('id')    || '';
+  const urlEmail   = params.get('email') || '';
+  const sessionId  = sessionStorage.getItem('pl_pending_id') || '';
+
+  const userId = urlId || sessionId;
+  const email  = urlEmail;
+
+  const iconEl          = document.getElementById('statusIcon');
+  const titleEl         = document.getElementById('statusTitle');
+  const subtitleEl      = document.getElementById('statusSubtitle');
+  const approvedBanner  = document.getElementById('approvedBanner');
+  const rejectedBanner  = document.getElementById('rejectedBanner');
+  const pendingSteps    = document.getElementById('pendingSteps');
+  const pendingActions  = document.getElementById('pendingActions');
+  const approvedActions = document.getElementById('approvedActions');
+  const rejectedActions = document.getElementById('rejectedActions');
+  const statusDot       = document.getElementById('statusDot');
+  const statusText      = document.getElementById('statusText');
+  const checkBtn        = document.getElementById('checkStatusBtn');
+
+  const setApproved = () => {
+    iconEl.className        = 'pending-icon pending-icon--approved';
+    iconEl.textContent      = '✅';
+    titleEl.textContent     = 'You\'re Approved!';
+    subtitleEl.textContent  = 'Great news — your account has been approved by the administrator.';
+    approvedBanner.style.display  = '';
+    pendingSteps.style.display    = 'none';
+    pendingActions.style.display  = 'none';
+    approvedActions.style.display = '';
+    rejectedActions.style.display = 'none';
+    statusDot.className     = 'status-dot status-dot--approved';
+    statusText.textContent  = 'Account approved — click Sign In Now';
+  };
+
+  const setRejected = () => {
+    iconEl.className        = 'pending-icon pending-icon--rejected';
+    iconEl.textContent      = '❌';
+    titleEl.textContent     = 'Access Request Declined';
+    subtitleEl.textContent  = 'Unfortunately your account request was not approved.';
+    rejectedBanner.style.display  = '';
+    pendingSteps.style.display    = 'none';
+    pendingActions.style.display  = 'none';
+    approvedActions.style.display = 'none';
+    rejectedActions.style.display = '';
+    statusDot.className     = 'status-dot';
+    statusText.textContent  = 'Access declined — contact your administrator';
+  };
+
+  const setChecking = () => {
+    iconEl.className   = 'pending-icon pending-icon--checking';
+    iconEl.textContent = '🔄';
+    statusDot.className    = 'status-dot status-dot--checking';
+    statusText.textContent = 'Checking status…';
+    checkBtn.disabled = true;
+  };
+
+  const setIdle = (lastChecked) => {
+    iconEl.className   = 'pending-icon pending-icon--waiting';
+    iconEl.textContent = '⏳';
+    statusDot.className    = 'status-dot status-dot--pending';
+    statusText.textContent = lastChecked ? `Still pending — last checked ${lastChecked}` : 'Auto-checks every 30 seconds';
+    checkBtn.disabled = false;
+  };
+
+  const checkStatus = async () => {
+    if (!userId && !email) {
+      statusText.textContent = 'Sign in from the portal to check status';
+      return;
+    }
+
+    setChecking();
+
+    try {
+      let user = null;
+
+      if (userId) {
+        const r = await sb.from('app_users').select('status').eq('id', userId).maybeSingle();
+        user = r.data;
+      }
+
+      if (!user && email) {
+        const r = await sb.from('app_users').select('status').eq('email', decodeURIComponent(email).toLowerCase().trim()).maybeSingle();
+        user = r.data;
+      }
+
+      if (!user) {
+        setIdle('just now');
+        statusText.textContent = 'Account not found — try signing in from the portal';
+        checkBtn.disabled = false;
+        return;
+      }
+
+      if (user.status === 'approved') {
+        setApproved();
+        if (pollInterval) clearInterval(pollInterval);
+        return;
+      }
+
+      if (user.status === 'rejected') {
+        setRejected();
+        if (pollInterval) clearInterval(pollInterval);
+        return;
+      }
+
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      setIdle(`at ${timeStr}`);
+    } catch (e) {
+      setIdle(null);
+      statusText.textContent = 'Could not reach server — will retry';
+      checkBtn.disabled = false;
+    }
+  };
+
+  checkBtn.addEventListener('click', checkStatus);
+
+  // Auto-check on load and every 30 seconds
+  await checkStatus();
+  let pollInterval = setInterval(checkStatus, 30000);
+})();
+</script>
 </body>
 </html>
