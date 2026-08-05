@@ -50,5 +50,25 @@ window.EmailService = (() => {
     }
   };
 
-  return Object.freeze({ sendOtp, isConfigured: _isConfigured });
+  const sendNotification = async (toEmail, toName, subject, message) => {
+    const notifyId = AppConfig.EMAILJS_NOTIFY_TEMPLATE_ID;
+    if (!notifyId || notifyId === 'YOUR_NOTIFY_TEMPLATE_ID') return { success: true };
+    if (!_isConfigured()) return { success: true };
+    if (typeof emailjs === 'undefined') return { success: true };
+    try {
+      emailjs.init(AppConfig.EMAILJS_PUBLIC_KEY);
+      await emailjs.send(AppConfig.EMAILJS_SERVICE_ID, notifyId, {
+        to_email: toEmail,
+        to_name:  toName || toEmail,
+        subject,
+        message,
+        app_name: 'PromptLib',
+      });
+    } catch (err) {
+      console.warn('[EmailService] Notification failed silently:', err?.text || err?.message);
+    }
+    return { success: true };
+  };
+
+  return Object.freeze({ sendOtp, sendNotification, isConfigured: _isConfigured });
 })();

@@ -235,3 +235,13 @@
   padding: 0;
 }
 .resend-btn:disabled { color: var(--text-muted); text-decoration: none; cursor: not-allowed; }
+
+.portal-back-link {
+  display: inline-block;
+  margin-bottom: var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--color-primary);
+  text-decoration: none;
+  font-weight: var(--fw-medium);
+}
+.portal-back-link:hover { text-decoration: underline; }

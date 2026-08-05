@@ -32,9 +32,13 @@
  */
 
 window.AppConfig = Object.freeze({
-  EMAILJS_SERVICE_ID:  'service_vm6nrx7',
-  EMAILJS_TEMPLATE_ID: 'template_pw3yojh',
-  EMAILJS_PUBLIC_KEY:  'LxrJVSdl_w8kIELp3',
+  EMAILJS_SERVICE_ID:          'service_vm6nrx7',
+  EMAILJS_TEMPLATE_ID:         'template_pw3yojh',
+  EMAILJS_NOTIFY_TEMPLATE_ID:  'YOUR_NOTIFY_TEMPLATE_ID',
+  EMAILJS_PUBLIC_KEY:          'LxrJVSdl_w8kIELp3',
+
+  ADMIN_EMAIL: 'venkata.pamidigantam@accenture.com',
+  ADMIN_NAME:  'Admin',
 
   // Set to true only during local development to bypass real email sending.
   // MUST be false in any environment users can access.

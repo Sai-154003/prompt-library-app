@@ -1,6 +1,6 @@
 (async () => {
   const session = AuthService.getSession();
-  if (!session) { window.location.href = 'index.html'; return; }
+  if (!session) { window.location.href = 'portal.html'; return; }
 
   if (!UserService.isAdmin()) { window.location.href = 'home.html'; return; }
 
@@ -35,7 +35,7 @@
 
   document.getElementById('adminLogoutBtn').addEventListener('click', () => {
     AuthService.logout();
-    window.location.href = 'index.html';
+    window.location.href = 'portal.html';
   });
 
   document.getElementById('adminLayout').style.display = '';
@@ -77,9 +77,26 @@
     const reason = document.getElementById('rejectReasonInput').value.trim();
     LoaderManager.show();
     if (rejectType === 'user') {
+      const u = allUsers.find(x => x.id === rejectTarget);
       await UserService.rejectUser(rejectTarget, session.userId, reason);
+      if (u) {
+        const msg = reason
+          ? `Your access request has been declined. Reason: ${reason}`
+          : 'Your access request has been declined.';
+        EmailService.sendNotification(u.email, u.name, 'Update on your PromptLib access request', msg);
+      }
     } else {
+      const p = allPrompts.find(x => x.id === rejectTarget);
       await PromptService.rejectPrompt(rejectTarget, session.userId, reason);
+      if (p) {
+        const creator = allUsers.find(x => x.id === p.userId);
+        if (creator) {
+          const msg = reason
+            ? `Your prompt "${p.title}" was not approved. Reason: ${reason}`
+            : `Your prompt "${p.title}" was not approved.`;
+          EmailService.sendNotification(creator.email, creator.name, 'Update on your prompt submission', msg);
+        }
+      }
     }
     LoaderManager.hide();
     closeRejectModal();
@@ -105,11 +122,22 @@
 
   document.getElementById('previewApproveBtn').addEventListener('click', async (e) => {
     const id = e.currentTarget.dataset.id;
+    const p  = allPrompts.find(x => x.id === id);
     LoaderManager.show();
     await PromptService.approvePrompt(id, session.userId);
     LoaderManager.hide();
     closePreviewModal();
     ToastManager.show('Prompt approved and published.', 'success');
+    if (p) {
+      const creator = allUsers.find(x => x.id === p.userId);
+      if (creator) {
+        EmailService.sendNotification(
+          creator.email, creator.name,
+          'Your prompt has been approved!',
+          `Your prompt "${p.title}" has been approved and is now live in the library.`
+        );
+      }
+    }
     await loadAll();
   });
 
@@ -324,10 +352,18 @@
     const id = btn.dataset.id;
 
     if (action === 'approve-user') {
+      const u = allUsers.find(x => x.id === id);
       LoaderManager.show();
       await UserService.approveUser(id, session.userId);
       LoaderManager.hide();
       ToastManager.show('User approved — they can now log in.', 'success');
+      if (u) {
+        EmailService.sendNotification(
+          u.email, u.name,
+          'Your PromptLib access has been approved',
+          'Great news! Your account has been approved. You can now sign in at the PromptLib portal.'
+        );
+      }
       await loadAll();
     }
 
@@ -352,10 +388,21 @@
     const id = btn.dataset.id;
 
     if (action === 'approve-prompt') {
+      const p = allPrompts.find(x => x.id === id);
       LoaderManager.show();
       await PromptService.approvePrompt(id, session.userId);
       LoaderManager.hide();
       ToastManager.show('Prompt approved and published to library.', 'success');
+      if (p) {
+        const creator = allUsers.find(x => x.id === p.userId);
+        if (creator) {
+          EmailService.sendNotification(
+            creator.email, creator.name,
+            'Your prompt has been approved!',
+            `Your prompt "${p.title}" has been approved and is now live in the library.`
+          );
+        }
+      }
       await loadAll();
     }
 

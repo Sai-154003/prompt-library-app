@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co https://api.emailjs.com;">
+  <title>PromptLib — Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/auth.css">
+  <link rel="stylesheet" href="css/portal.css">
+</head>
+<body>
+
+<div class="portal-page">
+
+  <!-- ── ADMIN PANEL ────────────────────────────────── -->
+  <div class="portal-panel portal-panel--admin">
+    <div class="portal-card portal-card--admin">
+      <span class="portal-icon">🛡️</span>
+      <h1 class="portal-heading">Admin Portal</h1>
+      <p class="portal-subheading">Restricted access — authorized personnel only</p>
+
+      <div class="portal-form-fields">
+        <div class="form-field">
+          <label class="form-label" for="adminEmail">Email address</label>
+          <input id="adminEmail" class="form-input" type="email" autocomplete="email"
+                 placeholder="admin@example.com" required>
+        </div>
+
+        <div class="form-field">
+          <label class="form-label" for="adminPassword">Password</label>
+          <div class="input-wrapper">
+            <input id="adminPassword" class="form-input" type="password" autocomplete="current-password"
+                   placeholder="Enter admin password" required>
+            <button type="button" id="toggleAdminPassword" class="toggle-password" aria-label="Toggle password visibility">👁</button>
+          </div>
+        </div>
+
+        <span id="adminError" class="form-error" role="alert" style="margin-top:-8px;"></span>
+
+        <button type="button" id="adminSubmitBtn" class="btn btn--primary btn--full btn--lg">
+          Sign In as Admin
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="portal-divider"></div>
+
+  <!-- ── USER PANEL ─────────────────────────────────── -->
+  <div class="portal-panel portal-panel--user">
+    <div class="portal-card portal-card--user">
+      <div class="portal-logo">
+        <div class="portal-logo__mark">✨</div>
+        <span class="portal-logo__name">PromptLib</span>
+      </div>
+      <h1 class="portal-heading">User Portal</h1>
+      <p class="portal-subheading">Sign in to access your prompt library</p>
+
+      <div id="userLockoutAlert" class="portal-lockout" role="alert">
+        🔒 Account temporarily locked. Try again in:
+        <span id="userLockoutCountdown"></span>
+      </div>
+
+      <div class="portal-form-fields">
+        <div class="form-field">
+          <label class="form-label" for="userEmail">Email address</label>
+          <input id="userEmail" class="form-input" type="email" autocomplete="email"
+                 placeholder="you@example.com" required>
+          <span id="userEmailError" class="form-error" role="alert"></span>
+        </div>
+
+        <div class="form-field">
+          <label class="form-label" for="userPassword">Password</label>
+          <div class="input-wrapper">
+            <input id="userPassword" class="form-input" type="password" autocomplete="current-password"
+                   placeholder="Enter your password" required>
+            <button type="button" id="toggleUserPassword" class="toggle-password" aria-label="Toggle password visibility">👁</button>
+          </div>
+          <span id="userPasswordError" class="form-error" role="alert"></span>
+        </div>
+
+        <div class="auth-form__row">
+          <label class="auth-checkbox">
+            <input type="checkbox" id="userRememberMe">
+            Remember me for 7 days
+          </label>
+          <a href="forgot-password.html" class="text-sm">Forgot password?</a>
+        </div>
+
+        <button type="button" id="userSubmitBtn" class="btn btn--primary btn--full btn--lg">
+          Sign In
+        </button>
+      </div>
+
+      <p class="portal-footer">
+        Don't have an account? <a href="signup.html">Create one</a>
+      </p>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/core/supabase.config.js"></script>
+<script src="js/core/constants.js"></script>
+<script src="js/core/config.js"></script>
+<script src="js/core/storage.js"></script>
+<script src="js/core/crypto.js"></script>
+<script src="js/core/validator.js"></script>
+<script src="js/services/otp.service.js"></script>
+<script src="js/services/auth.service.js"></script>
+<script src="js/services/user.service.js"></script>
+<script src="js/services/admin-auth.service.js"></script>
+<script src="js/services/prompt.service.js"></script>
+<script src="js/ui/toast.js"></script>
+<script src="js/ui/loader.js"></script>
+<script>
+(async () => {
+  // Redirect if already logged in
+  const existingSession = AuthService.getSession();
+  if (existingSession) {
+    const role = UserService.getLocalRole();
+    window.location.href = role === 'admin' ? 'admin.html' : 'home.html';
+    return;
+  }
+
+  // Toggle password visibility
+  document.getElementById('toggleAdminPassword').addEventListener('click', function () {
+    const inp = document.getElementById('adminPassword');
+    const isText = inp.type === 'text';
+    inp.type = isText ? 'password' : 'text';
+    this.textContent = isText ? '👁' : '🙈';
+  });
+
+  document.getElementById('toggleUserPassword').addEventListener('click', function () {
+    const inp = document.getElementById('userPassword');
+    const isText = inp.type === 'text';
+    inp.type = isText ? 'password' : 'text';
+    this.textContent = isText ? '👁' : '🙈';
+  });
+
+  // ── Admin login ────────────────────────────────────────────
+  const adminSubmitBtn = document.getElementById('adminSubmitBtn');
+  const adminErrorEl   = document.getElementById('adminError');
+
+  const showAdminError = (msg) => { adminErrorEl.textContent = msg; };
+  const clearAdminError = () => { adminErrorEl.textContent = ''; };
+
+  adminSubmitBtn.addEventListener('click', async () => {
+    clearAdminError();
+    const email    = document.getElementById('adminEmail').value.trim();
+    const password = document.getElementById('adminPassword').value;
+
+    const emailCheck = Validator.validateEmail(email);
+    if (!emailCheck.valid) { showAdminError(emailCheck.message); return; }
+    if (!password) { showAdminError('Password is required.'); return; }
+
+    LoaderManager.showInline(adminSubmitBtn);
+    const result = await AdminAuthService.login(email, password);
+    LoaderManager.hideInline(adminSubmitBtn);
+
+    if (!result.success) { showAdminError(result.message); return; }
+    window.location.href = 'admin.html';
+  });
+
+  // Enter key on admin form
+  [document.getElementById('adminEmail'), document.getElementById('adminPassword')].forEach(el => {
+    el.addEventListener('keydown', (e) => { if (e.key === 'Enter') adminSubmitBtn.click(); });
+  });
+
+  // ── User login ─────────────────────────────────────────────
+  const userSubmitBtn  = document.getElementById('userSubmitBtn');
+  const userEmailErr   = document.getElementById('userEmailError');
+  const userPasswordErr = document.getElementById('userPasswordError');
+  const lockoutAlert   = document.getElementById('userLockoutAlert');
+  const lockoutCountdown = document.getElementById('userLockoutCountdown');
+  let lockoutInterval = null;
+
+  const clearUserErrors = () => {
+    userEmailErr.textContent = ''; userPasswordErr.textContent = '';
+    document.getElementById('userEmail').classList.remove('is-error');
+    document.getElementById('userPassword').classList.remove('is-error');
+    lockoutAlert.classList.remove('is-visible');
+  };
+
+  const showUserError = (field, msg) => {
+    if (field === 'email') { userEmailErr.textContent = msg; document.getElementById('userEmail').classList.add('is-error'); }
+    else { userPasswordErr.textContent = msg; document.getElementById('userPassword').classList.add('is-error'); }
+  };
+
+  const startLockoutCountdown = (lockedUntil) => {
+    if (lockoutInterval) clearInterval(lockoutInterval);
+    lockoutAlert.classList.add('is-visible');
+    userSubmitBtn.disabled = true;
+    const update = () => {
+      const remaining = lockedUntil - Date.now();
+      if (remaining <= 0) {
+        clearInterval(lockoutInterval);
+        lockoutAlert.classList.remove('is-visible');
+        userSubmitBtn.disabled = false;
+        lockoutCountdown.textContent = '';
+        return;
+      }
+      const m = Math.floor(remaining / 60000);
+      const s = Math.floor((remaining % 60000) / 1000);
+      lockoutCountdown.textContent = `${m}m ${String(s).padStart(2,'0')}s`;
+    };
+    update();
+    lockoutInterval = setInterval(update, 1000);
+  };
+
+  userSubmitBtn.addEventListener('click', async () => {
+    clearUserErrors();
+    const email      = document.getElementById('userEmail').value.trim();
+    const password   = document.getElementById('userPassword').value;
+    const rememberMe = document.getElementById('userRememberMe').checked;
+
+    const emailCheck = Validator.validateEmail(email);
+    if (!emailCheck.valid) { showUserError('email', emailCheck.message); return; }
+    if (!password) { showUserError('password', 'Password is required.'); return; }
+
+    LoaderManager.showInline(userSubmitBtn);
+    const result = await AuthService.login(email, password, rememberMe);
+    LoaderManager.hideInline(userSubmitBtn);
+
+    if (result.locked) { startLockoutCountdown(result.lockedUntil); return; }
+
+    if (!result.success) {
+      const lockout = AuthService.getLockoutStatus(email.toLowerCase().trim());
+      if (lockout.locked) startLockoutCountdown(lockout.lockedUntil);
+      else showUserError('password', result.message);
+      return;
+    }
+
+    LoaderManager.showInline(userSubmitBtn);
+    let access;
+    try {
+      access = await UserService.checkLoginAccess(result.session.userId, result.session.email, result.session.name);
+    } catch {
+      AuthService.logout();
+      LoaderManager.hideInline(userSubmitBtn);
+      showUserError('email', 'Could not verify account status. Please check your connection and try again.');
+      return;
+    }
+    LoaderManager.hideInline(userSubmitBtn);
+
+    if (!access.allowed) {
+      AuthService.logout();
+      const msg = access.status === 'rejected'
+        ? 'Your account access has been revoked. Please contact an administrator.'
+        : 'Your account is awaiting admin approval. You will be notified once approved.';
+      showUserError('email', msg);
+      return;
+    }
+
+    UserService.setLocalAppUser({ role: access.role, status: access.status });
+    await UserService.updateLastLogin(result.session.userId);
+    window.location.href = 'home.html';
+  });
+
+  // Enter key on user form
+  [document.getElementById('userEmail'), document.getElementById('userPassword')].forEach(el => {
+    el.addEventListener('keydown', (e) => { if (e.key === 'Enter') userSubmitBtn.click(); });
+  });
+
+})();
+</script>
+</body>
+</html>

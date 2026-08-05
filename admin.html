@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co;">
+        content="default-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co https://api.emailjs.com;">
   <title>Admin Panel — PromptLib</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -170,11 +170,14 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/core/supabase.config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <script src="js/core/constants.js"></script>
+<script src="js/core/config.js"></script>
 <script src="js/core/storage.js"></script>
 <script src="js/core/crypto.js"></script>
 <script src="js/core/validator.js"></script>
 <script src="js/services/otp.service.js"></script>
+<script src="js/services/email.service.js"></script>
 <script src="js/services/auth.service.js"></script>
 <script src="js/services/user.service.js"></script>
 <script src="js/services/prompt.service.js"></script>

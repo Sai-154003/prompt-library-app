@@ -1,6 +1,6 @@
 (async () => {
   const session = AuthService.getSession();
-  if (!session) { window.location.href = 'index.html'; return; }
+  if (!session) { window.location.href = 'portal.html'; return; }
 
   await PromptService.seedForUser(session.userId);
 
@@ -80,7 +80,7 @@
   userMenuDrop.addEventListener('click', e => e.stopPropagation());
 
   document.getElementById('logoutBtn').addEventListener('click', () => {
-    AuthService.logout(); window.location.href = 'index.html';
+    AuthService.logout(); window.location.href = 'portal.html';
   });
 
   // ── Load + Filter ─────────────────────────────────────────
@@ -97,6 +97,7 @@
     }
     render();
     updateSidebarCounts();
+    updateStreak();
   };
 
   const getFiltered = () => {
@@ -416,6 +417,13 @@
         ? 'Prompt submitted for review. It will appear in the library once approved.'
         : 'Prompt added.';
       ToastManager.show(msg, newPrompt.status === 'pending' ? 'info' : 'success');
+      if (newPrompt.status === 'pending') {
+        EmailService.sendNotification(
+          AppConfig.ADMIN_EMAIL, AppConfig.ADMIN_NAME,
+          'New prompt awaiting approval',
+          `${session.name} submitted a new prompt titled "${title}" for your review. Please log in to the admin panel to approve or reject it.`
+        );
+      }
     }
     LoaderManager.hideInline(btn);
     closePromptModal();
@@ -747,7 +755,7 @@
     const banner = document.getElementById('sessionBanner');
     setInterval(() => {
       const s = AuthService.getSession();
-      if (!s) { window.location.href = 'index.html'; return; }
+      if (!s) { window.location.href = 'portal.html'; return; }
       if (banner) banner.classList.toggle('is-visible', s.expiresAt - Date.now() < 5 * 60 * 1000);
     }, 30_000);
   };
@@ -768,8 +776,21 @@
     }
   });
 
+  // ── Streak ────────────────────────────────────────────────
+
+  const updateStreak = () => {
+    const approvedCount = state.prompts.filter(p => p.userId === session.userId && p.status === 'approved').length;
+    const badge = document.getElementById('streakBadge');
+    const count = document.getElementById('streakCount');
+    if (badge && count) {
+      count.textContent = approvedCount;
+      badge.style.display = approvedCount > 0 ? 'flex' : 'none';
+    }
+  };
+
   // ── Init ──────────────────────────────────────────────────
 
   await loadPrompts();
+  updateStreak();
   watchSession();
 })();

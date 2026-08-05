@@ -36,20 +36,20 @@ window.OtpService = (() => {
     const records = _getRecords();
     const idx = records.findIndex(r => r.email === email && r.purpose === purpose);
 
-    if (idx === -1) return { success: false, message: 'OTP not found. Please request a new one.' };
+    if (idx === -1) return { success: false, message: 'No active code found. Please click "Resend OTP" to get a new code.' };
 
     const record = records[idx];
 
     if (Date.now() > record.expiresAt) {
       records.splice(idx, 1);
       _saveRecords(records);
-      return { success: false, message: 'OTP has expired. Please request a new one.' };
+      return { success: false, message: 'Your verification code has expired. Please request a new one.' };
     }
 
     if (record.attempts >= OTP_MAX_ATTEMPTS) {
       records.splice(idx, 1);
       _saveRecords(records);
-      return { success: false, message: 'Too many attempts. Please request a new OTP.' };
+      return { success: false, message: 'Too many incorrect attempts. Please click "Resend OTP" to get a new code.' };
     }
 
     const inputHash = await CryptoService.hashOtp(otp.trim());
@@ -59,7 +59,7 @@ window.OtpService = (() => {
       _saveRecords(records);
       return {
         success: false,
-        message: `Incorrect OTP. ${remaining} attempt${remaining !== 1 ? 's' : ''} remaining.`,
+        message: `That code is incorrect — ${remaining} attempt${remaining !== 1 ? 's' : ''} left.`,
       };
     }
 

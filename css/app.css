@@ -88,6 +88,18 @@
   flex-shrink: 0;
 }
 
+.streak-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  background: var(--color-success-light, #d1fae5);
+  color: var(--color-success, #059669);
+  border-radius: var(--radius-full);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+}
+
 .icon-btn {
   width: 36px; height: 36px;
   border-radius: var(--radius-md);
