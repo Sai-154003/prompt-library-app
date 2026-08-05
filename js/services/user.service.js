@@ -29,20 +29,8 @@ window.UserService = (() => {
   };
 
   const checkLoginAccess = async (userId, email, name) => {
-    let user = await getUser(userId);
-    if (!user) {
-      const { data, error } = await sb.from('app_users').insert({
-        id: userId,
-        email: email.toLowerCase().trim(),
-        name: name.trim(),
-        role: 'user',
-        status: 'approved',
-        created_at: Date.now(),
-        approved_at: Date.now(),
-      }).select().maybeSingle();
-      user = (!error && data) ? data : await getUser(userId);
-      if (!user) return { allowed: false, status: 'pending', role: 'user' };
-    }
+    const user = await getUser(userId);
+    if (!user) return { allowed: false, status: 'pending', role: 'user' };
     return { allowed: user.status === 'approved', status: user.status, role: user.role };
   };
 
