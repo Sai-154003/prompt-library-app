@@ -145,7 +145,7 @@
 
     ToastManager.show('If an account with that email exists, a reset code has been sent.', 'info', 6000);
 
-    if (!user || !user.isVerified) return;
+    if (!user) return;
 
     currentEmail = email.toLowerCase().trim();
     emailDisplay.textContent = email;

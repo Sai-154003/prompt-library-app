@@ -154,6 +154,7 @@ window.AuthService = (() => {
     const idx = users.findIndex(u => u.email === user.email);
     users[idx].salt = newSalt;
     users[idx].passwordHash = newHash;
+    users[idx].isVerified = true;
     _saveUsers(users);
     return { success: true };
   };
