@@ -252,10 +252,11 @@
 
     if (!access.allowed) {
       AuthService.logout();
-      const msg = access.status === 'rejected'
-        ? 'Your account access has been revoked. Please contact an administrator.'
-        : 'Your account is awaiting admin approval. You will be notified once approved.';
-      showUserError('email', msg);
+      if (access.status === 'rejected') {
+        showUserError('email', 'Your account access has been revoked. Please contact an administrator.');
+      } else {
+        window.location.href = 'pending-approval.html';
+      }
       return;
     }
 

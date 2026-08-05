@@ -212,7 +212,7 @@
       await UserService.createPendingUser(registeredUser.id, currentEmail, registeredUser.name);
     }
     clearInterval(timerInterval);
-    window.location.href = 'index.html?pending=1';
+    window.location.href = 'pending-approval.html';
   });
 
   if (AuthService.getSession()) window.location.href = 'home.html';
